@@ -8,7 +8,6 @@ import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class Lox {
     public static void main(String[] args) throws IOException {
@@ -28,7 +27,7 @@ public class Lox {
      * Reads the provided file from its path then runs it
      *
      * @param path the path of the file to run
-     * @throws IOException
+     * @throws IOException if the file cannot be read
      */
     private static void runFile(String path) throws IOException {
         // Suitable for small files as it reads the whole file at once.
@@ -60,7 +59,7 @@ public class Lox {
         // [var language = "lox";] becomes [var] [language] [=] ["lox"] [;]
         List<Token> tokens = scanner.scanTokens();
 
-        for (Token token : tokens){
+        for (Token token : tokens) {
             System.out.println(token);
         }
     }
@@ -69,7 +68,7 @@ public class Lox {
         report(line, "", message);
     }
 
-    private static  void report(int line, String where, String message) {
+    private static void report(int line, String where, String message) {
         System.err.println(
                 "[line " + line + "] Error" + where + ": " + message);
         hadError = true;
