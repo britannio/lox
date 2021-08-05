@@ -24,9 +24,9 @@ public class GenerateAst {
 
         writer.println("package dev.britannio.lox;");
         writer.println();
-        writer.println("import java.util.List;");
-        writer.println("import dev.britannio.lox.Token;");
-        writer.println();
+        // writer.println("import java.util.List;");
+        // writer.println("import dev.britannio.lox.Token;");
+        // writer.println();
         writer.println("abstract class " + baseName + " {");
 
         defineVisitor(writer, baseName, types);
