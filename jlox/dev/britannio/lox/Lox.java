@@ -66,14 +66,14 @@ public class Lox {
         // System.out.println(tokens);
 
         var parser = new Parser(tokens);
-        Expr expression = parser.parse();
+        List<Stmt> statements = parser.parse();
         // System.out.println(new AstPrinter().print(expression));
 
         // Stop if a syntax error is encountered.
         if (hadError)
             return;
 
-        interpreter.interpret(expression);
+        interpreter.interpret(statements);
 
     }
 

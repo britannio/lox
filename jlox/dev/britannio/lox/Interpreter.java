@@ -1,25 +1,29 @@
 package dev.britannio.lox;
 
+import java.util.List;
 
 import dev.britannio.lox.Expr.Binary;
 import dev.britannio.lox.Expr.Grouping;
 import dev.britannio.lox.Expr.Literal;
 import dev.britannio.lox.Expr.Unary;
+import dev.britannio.lox.Stmt.Expression;
+import dev.britannio.lox.Stmt.Print;
 
 /**
  * Executes an expression.
  */
-public class Interpreter implements Expr.Visitor<Object> {
-    
-    public void interpret(Expr expression) {
+public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
+
+    public void interpret(List<Stmt> statements) {
         try {
-            Object value= evaluate(expression);
-            System.out.println(stringify(value));
+            for (Stmt statement : statements) {
+                execute(statement);
+            }
         } catch (RuntimeError error) {
             Lox.runtimeError(error);
         }
     }
-    
+
     @Override
     public Object visitLiteralExpr(Literal expr) {
         return expr.value;
@@ -103,7 +107,6 @@ public class Interpreter implements Expr.Visitor<Object> {
                     return stringify(left) + stringify(right);
                 }
 
-
                 throw new RuntimeError(expr.operator, "Operands must be two numbers or two strings.");
 
             default:
@@ -137,12 +140,13 @@ public class Interpreter implements Expr.Visitor<Object> {
     }
 
     private String stringify(Object object) {
-        if (object == null) return "nil";
-        
+        if (object == null)
+            return "nil";
+
         if (object instanceof Double) {
             var text = object.toString();
             if (text.endsWith(".0")) {
-                text = text.substring(0, text.length() -2);
+                text = text.substring(0, text.length() - 2);
             }
             return text;
         }
@@ -151,8 +155,35 @@ public class Interpreter implements Expr.Visitor<Object> {
         return object.toString();
     }
 
+    /**
+     * 
+     * @param expr the expression to evaluate
+     * @return the result of evaluating the expression
+     */
     private Object evaluate(Expr expr) {
         return expr.accept(this);
+    }
+
+    /**
+     * 
+     * @param stmt the statement to execute
+     */
+    private void execute(Stmt stmt) {
+        stmt.accept(this);
+    }
+
+    @Override
+    public Void visitExpressionStmt(Expression stmt) {
+        evaluate(stmt.expression);
+        return null;
+
+    }
+
+    @Override
+    public Void visitPrintStmt(Print stmt) {
+        Object value = evaluate(stmt.expression);
+        System.out.println(stringify(value));
+        return null;
     }
 
 }

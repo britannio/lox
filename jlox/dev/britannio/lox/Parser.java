@@ -1,25 +1,31 @@
 package dev.britannio.lox;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import static dev.britannio.lox.TokenType.*;
 
-// EXPRESSION GRAMMAR
-// --------------------------------------------------------------
-// expression     → equality ;
-// equality       → comparison ( ( "!=" | "==" ) comparison )* ;
-// comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
-// term           → factor ( ( "-" | "+" ) factor )* ;
-// factor         → unary ( ( "/" | "*" ) unary )* ;
-// unary          → ( "!" | "-" ) unary | primary ;
-// primary        → number | string | "true" | "false" | "nil" | "(" expression ")" ; 
+/* EXPRESSION GRAMMAR
+--------------------------------------------------------------
+program        → statement* EOF 
+statement      → exprStmt | printStmt 
+exprStmt       → expression ";" 
+printStmt      → "print" expression ";" 
+expression     → equality 
+equality       → comparison ( ( "!=" | "==" ) comparison )* 
+comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )* 
+term           → factor ( ( "-" | "+" ) factor )* 
+factor         → unary ( ( "/" | "*" ) unary )* 
+unary          → ( "!" | "-" ) unary | primary 
+primary        → number | string | "true" | "false" | "nil" | "(" expression ")"
+*/
 
 /**
- * Converts a sequence of tokens into a syntax tree using Recursive Descent 
+ * Converts a sequence of tokens into a syntax tree using Recursive Descent
  * 
  * Recursive descent is top-down as it starts from the top/outermost grammar
- * (expression) and works down to nested sub expressions before reaching 
- * the leaves of the syntax tree (primary).
+ * (expression) and works down to nested sub expressions before reaching the
+ * leaves of the syntax tree (primary).
  * 
  * Expressions:
  * <ul>
@@ -34,7 +40,8 @@ import static dev.britannio.lox.TokenType.*;
  * 
  */
 class Parser {
-    private static class ParseError extends RuntimeException {}
+    private static class ParseError extends RuntimeException {
+    }
 
     private final List<Token> tokens;
     private int current = 0;
@@ -43,12 +50,14 @@ class Parser {
         this.tokens = tokens;
     }
 
-    public Expr parse() {
-        try {
-            return expression();
-        } catch (ParseError error) {
-           return null; 
+    public List<Stmt> parse() {
+        List<Stmt> statements = new ArrayList<>();
+        while (!isAtEnd()) {
+            statements.add(statement());
         }
+
+        return statements;
+
     }
 
     /**
@@ -58,6 +67,34 @@ class Parser {
      */
     private Expr expression() {
         return equality();
+    }
+
+    /**
+     * BNF: exprStmt | printStmt
+     * 
+     * @return
+     */
+    private Stmt statement() {
+        if (match(PRINT))
+            return printStatement();
+
+        return expressionStatement();
+    }
+
+    /**
+     * BNF: "print" expression ";"
+     * @return
+     */
+    private Stmt printStatement() {
+        Expr value = expression();
+        consume(SEMICOLON, "Expect ';' after value.");
+        return new Stmt.Print(value);
+    }
+
+    private Stmt expressionStatement() {
+        Expr expr = expression();
+        consume(SEMICOLON, "Expect ';' after expression.");
+        return new Stmt.Expression(expr);
     }
 
     /**
@@ -98,6 +135,7 @@ class Parser {
 
     /**
      * BNF: factor ( ( "-" | "+" ) factor )*
+     * 
      * @return
      */
     private Expr term() {
@@ -110,16 +148,17 @@ class Parser {
         }
 
         return expr;
-    } 
+    }
 
     /**
      * BNF: unary ( ( "/" | "*" ) unary )*
+     * 
      * @return
      */
     private Expr factor() {
         Expr expr = unary();
-        
-        while(match(SLASH, STAR)) {
+
+        while (match(SLASH, STAR)) {
             Token operator = previous();
             Expr right = unary();
             expr = new Expr.Binary(expr, operator, right);
@@ -130,11 +169,12 @@ class Parser {
 
     /**
      * BNF: ( "!" | "-" ) unary | primary
+     * 
      * @return
      */
     private Expr unary() {
         if (match(BANG, MINUS)) {
-            Token operator= previous();
+            Token operator = previous();
             Expr right = unary();
             return new Expr.Unary(operator, right);
         }
@@ -142,12 +182,14 @@ class Parser {
         return primary();
     }
 
-
     private Expr primary() {
-        if (match(FALSE)) return new Expr.Literal(false);
-        if (match(TRUE)) return new Expr.Literal(true);
-        if (match(NIL)) return new Expr.Literal(null);
-        
+        if (match(FALSE))
+            return new Expr.Literal(false);
+        if (match(TRUE))
+            return new Expr.Literal(true);
+        if (match(NIL))
+            return new Expr.Literal(null);
+
         if (match(NUMBER, STRING)) {
             return new Expr.Literal(previous().literal);
         }
@@ -161,7 +203,6 @@ class Parser {
         throw error(peek(), "Expect expression.");
 
     }
-
 
     /**
      * @param types
@@ -181,13 +222,15 @@ class Parser {
     /**
      * Consumes the proved type. If the current token does not match the provied
      * type, an error is thrown with the provided message.
+     * 
      * @param type
      * @param message
      * @return
      */
     private Token consume(TokenType type, String message) {
-        if (check(type)) return advance();
-        
+        if (check(type))
+            return advance();
+
         throw error(peek(), message);
     }
 
@@ -203,10 +246,12 @@ class Parser {
 
     /**
      * Consumes and returns the current token.
+     * 
      * @return the current token.
      */
     private Token advance() {
-        if (!isAtEnd()) current++;
+        if (!isAtEnd())
+            current++;
         return previous();
     }
 
@@ -217,12 +262,10 @@ class Parser {
         return peek().type == EOF;
     }
 
-
-
     /**
      * @return the current token <b>without</b> consuming it.
      */
-    private Token peek(){
+    private Token peek() {
         return tokens.get(current);
     }
 
@@ -230,14 +273,14 @@ class Parser {
      * @return the previous token.
      */
     private Token previous() {
-        return tokens.get(current -1);
+        return tokens.get(current - 1);
     }
 
-    private ParseError error(Token token, String message){
+    private ParseError error(Token token, String message) {
         Lox.error(token, message);
         return new ParseError();
     }
-        
+
     /**
      * Consume tokens until the end of the current statement is reached or the
      * current token resembles a new statement.
@@ -246,8 +289,9 @@ class Parser {
         advance();
 
         while (!isAtEnd()) {
-            if (previous().type == SEMICOLON) return;
-            
+            if (previous().type == SEMICOLON)
+                return;
+
             switch (peek().type) {
                 case CLASS:
                 case FUN:
