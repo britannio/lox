@@ -42,6 +42,10 @@ public class Lox {
             System.exit(70);
     }
 
+    /**
+     * Runs Lox in REPL(read-eval-print-loop) mode 
+     * @throws IOException
+     */
     private static void runPrompt() throws IOException {
         InputStreamReader input = new InputStreamReader(System.in);
         BufferedReader reader = new BufferedReader(input);

@@ -81,9 +81,9 @@ public class Scanner {
             case '"' -> string();
             // Matches 1-2 characters.
             case '!' -> addToken(match('=') ? BANG_EQUAL : BANG);
-            case '=' -> addToken(match('=') ? EQUAL_EQUAL : BANG);
-            case '<' -> addToken(match('=') ? LESS_EQUAL : BANG);
-            case '>' -> addToken(match('=') ? GREATER_EQUAL : BANG);
+            case '=' -> addToken(match('=') ? EQUAL_EQUAL : EQUAL);
+            case '<' -> addToken(match('=') ? LESS_EQUAL : LESS);
+            case '>' -> addToken(match('=') ? GREATER_EQUAL : GREATER);
             // Matches single line comments or division.
             case '/' -> {
                 if (match('/')) {

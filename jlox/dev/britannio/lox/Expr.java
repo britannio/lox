@@ -12,6 +12,8 @@ abstract class Expr {
 
     R visitBinaryExpr(Binary expr);
 
+    R visitVariableExpr(Variable expr);
+
   }
 
   abstract <R> R accept(Visitor<R> visitor);
@@ -72,6 +74,19 @@ abstract class Expr {
     final Expr left;
     final Token operator;
     final Expr right;
+  }
+
+  static class Variable extends Expr {
+    Variable(Token name) {
+      this.name = name;
+    }
+
+    @Override
+    <R> R accept(Visitor<R> visitor) {
+      return visitor.visitVariableExpr(this);
+    }
+
+    final Token name;
   }
 
 }

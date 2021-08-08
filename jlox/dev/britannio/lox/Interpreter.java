@@ -2,17 +2,11 @@ package dev.britannio.lox;
 
 import java.util.List;
 
-import dev.britannio.lox.Expr.Binary;
-import dev.britannio.lox.Expr.Grouping;
-import dev.britannio.lox.Expr.Literal;
-import dev.britannio.lox.Expr.Unary;
-import dev.britannio.lox.Stmt.Expression;
-import dev.britannio.lox.Stmt.Print;
-
 /**
  * Executes an expression.
  */
 public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
+    private Environment environment = new Environment();
 
     public void interpret(List<Stmt> statements) {
         try {
@@ -25,17 +19,17 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     }
 
     @Override
-    public Object visitLiteralExpr(Literal expr) {
+    public Object visitLiteralExpr(Expr.Literal expr) {
         return expr.value;
     }
 
     @Override
-    public Object visitGroupingExpr(Grouping expr) {
+    public Object visitGroupingExpr(Expr.Grouping expr) {
         return evaluate(expr.expression);
     }
 
     @Override
-    public Object visitUnaryExpr(Unary expr) {
+    public Object visitUnaryExpr(Expr.Unary expr) {
         Object right = evaluate(expr.right);
 
         switch (expr.operator.type) {
@@ -63,7 +57,7 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     }
 
     @Override
-    public Object visitBinaryExpr(Binary expr) {
+    public Object visitBinaryExpr(Expr.Binary expr) {
         Object left = evaluate(expr.left);
         Object right = evaluate(expr.right);
 
@@ -173,17 +167,33 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     }
 
     @Override
-    public Void visitExpressionStmt(Expression stmt) {
+    public Void visitExpressionStmt(Stmt.Expression stmt) {
         evaluate(stmt.expression);
         return null;
 
     }
 
     @Override
-    public Void visitPrintStmt(Print stmt) {
+    public Void visitPrintStmt(Stmt.Print stmt) {
         Object value = evaluate(stmt.expression);
         System.out.println(stringify(value));
         return null;
+    }
+
+    @Override
+    public Void visitVarStmt(Stmt.Var stmt) {
+        Object value = null;
+        if (stmt.initializer != null) {
+            value = evaluate(stmt.initializer);
+        }
+
+        environment.define(stmt.name.lexeme, value);
+        return null;
+    }
+
+    @Override
+    public Object visitVariableExpr(Expr.Variable expr) {
+        return environment.get(expr.name);
     }
 
 }

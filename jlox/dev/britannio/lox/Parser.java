@@ -7,7 +7,9 @@ import static dev.britannio.lox.TokenType.*;
 
 /* EXPRESSION GRAMMAR
 --------------------------------------------------------------
-program        → statement* EOF 
+program        → declaration* EOF 
+declaration    → varDecl | statement
+varDecl        → "var" IDENTIFIER ( "=" expression )? ";"
 statement      → exprStmt | printStmt 
 exprStmt       → expression ";" 
 printStmt      → "print" expression ";" 
@@ -17,7 +19,7 @@ comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )*
 term           → factor ( ( "-" | "+" ) factor )* 
 factor         → unary ( ( "/" | "*" ) unary )* 
 unary          → ( "!" | "-" ) unary | primary 
-primary        → number | string | "true" | "false" | "nil" | "(" expression ")"
+primary        → NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")" | IDENTIFIER 
 */
 
 /**
@@ -53,11 +55,11 @@ class Parser {
     public List<Stmt> parse() {
         List<Stmt> statements = new ArrayList<>();
         while (!isAtEnd()) {
-            statements.add(statement());
+            // declaration() can return null, should we be adding it to the list?
+            statements.add(declaration());
         }
 
         return statements;
-
     }
 
     /**
@@ -67,6 +69,24 @@ class Parser {
      */
     private Expr expression() {
         return equality();
+    }
+
+    /**
+     * BNF: varDecl | statement
+     * @return
+     */
+    private Stmt declaration() {
+        try {
+            if (match(VAR)) {
+                return varDeclaration();
+            }
+
+            return statement();
+        } catch (ParseError error) {
+            // Move to the next declaration.
+            synchronize();
+            return null;
+        }
     }
 
     /**
@@ -83,6 +103,7 @@ class Parser {
 
     /**
      * BNF: "print" expression ";"
+     * 
      * @return
      */
     private Stmt printStatement() {
@@ -91,6 +112,28 @@ class Parser {
         return new Stmt.Print(value);
     }
 
+    /**
+     * BNF: "var" IDENTIFIER ( "=" expression )? ";"
+     * 
+     * @return
+     */
+    private Stmt varDeclaration() {
+        Token name = consume(IDENTIFIER, "Expect variable name.");
+
+        Expr initializer = null;
+        if (match(EQUAL)) {
+            initializer = expression();
+        }
+
+        consume(SEMICOLON, "Expect ';' after variable declaration.");
+        return new Stmt.Var(name, initializer);
+    }
+
+    /**
+     * BNF: expression ";"
+     * 
+     * @return
+     */
     private Stmt expressionStatement() {
         Expr expr = expression();
         consume(SEMICOLON, "Expect ';' after expression.");
@@ -192,6 +235,10 @@ class Parser {
 
         if (match(NUMBER, STRING)) {
             return new Expr.Literal(previous().literal);
+        }
+
+        if (match(IDENTIFIER)) {
+            return new Expr.Variable(previous());
         }
 
         if (match(LEFT_PAREN)) {
