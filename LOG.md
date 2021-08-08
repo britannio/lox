@@ -51,3 +51,26 @@ Input: 1 + 2 * -3 / 4 == -0.5
 Output: (== (+ 1.0 (/ (* 2.0 (- 3.0)) 4.0)) (- 0.5))
 ```
 
+## 4 - Evaluating Expressions
+
+An AST can be evaluated!
+
+```java
+var scanner = new Scanner(source);
+// [<NUMBER, 1, 1.0>, <PLUS, +, null>, <NUMBER, 2, 2.0>, <STAR, *, null>, <MINUS, -, null>, <NUMBER, 3, 3.0>, <SLASH, /, null>, <NUMBER, 4, 4.0>, <EOF, , null>]
+var tokens = scanner.scanTokens();
+
+var parser = new Parser(tokens);
+var expression = parser.parse();
+
+interpreter.interpret(expression);
+```
+
+```java
+Input: 1 + 2 * -3 / 4
+Output: -0.5
+
+
+Input: 1 + 2 * -3 / 4 == -0.5
+Output: true
+```

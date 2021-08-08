@@ -63,16 +63,17 @@ public class Lox {
         // Split the input into meaningful blobs of characters i.e. lexemes
         // [var language = "lox";] becomes [var] [language] [=] ["lox"] [;]
         List<Token> tokens = scanner.scanTokens();
+        // System.out.println(tokens);
 
         var parser = new Parser(tokens);
         Expr expression = parser.parse();
+        // System.out.println(new AstPrinter().print(expression));
 
         // Stop if a syntax error is encountered.
         if (hadError)
             return;
 
         interpreter.interpret(expression);
-        // System.out.println(new AstPrinter().print(expression));
 
     }
 
