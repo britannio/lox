@@ -74,4 +74,10 @@ class AstPrinter implements Expr.Visitor<String>, Stmt.Visitor<String> {
         return null;
     }
 
+    @Override
+    public String visitAssignExpr(Expr.Assign expr) {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
 }
