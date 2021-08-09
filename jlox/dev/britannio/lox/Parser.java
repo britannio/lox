@@ -10,9 +10,10 @@ import static dev.britannio.lox.TokenType.*;
 program        → declaration* EOF 
 declaration    → varDecl | statement
 varDecl        → "var" IDENTIFIER ( "=" expression )? ";"
-statement      → exprStmt | printStmt 
+statement      → exprStmt | printStmt | block
 exprStmt       → expression ";" 
 printStmt      → "print" expression ";" 
+block          → "{" declaration* "}"
 expression     → assignment
 assignment     → IDENTIFIER "=" assignment | equality
 equality       → comparison ( ( "!=" | "==" ) comparison )* 
@@ -92,13 +93,15 @@ class Parser {
     }
 
     /**
-     * BNF: exprStmt | printStmt
+     * BNF: exprStmt | printStmt | block
      * 
      * @return
      */
     private Stmt statement() {
         if (match(PRINT))
             return printStatement();
+        if (match(LEFT_BRACE))
+            return new Stmt.Block(block());
 
         return expressionStatement();
     }
@@ -143,13 +146,28 @@ class Parser {
     }
 
     /**
+     * BNF: "{" declaration* "}"
+     * @return
+     */
+    private List<Stmt> block() {
+        List<Stmt> statements = new ArrayList<>();
+        
+        while (!check(RIGHT_BRACE) && !isAtEnd()) {
+            statements.add(declaration());
+        }
+
+        consume(RIGHT_BRACE, "Expect '}' after block.");
+        return statements;
+    }
+
+    /**
      * BNF: IDENTIFIER "=" assignment | equality
      * 
      * @return
      */
     private Expr assignment() {
-        // Valid assignment targets (identifiers) can always be treated as 
-        // expressions e.g., the a in a=1; is valid on its own. If = is matched 
+        // Valid assignment targets (identifiers) can always be treated as
+        // expressions e.g., the a in a=1; is valid on its own. If = is matched
         // then the expression is casted to a variable.
         Expr expr = equality();
 

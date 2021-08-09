@@ -80,4 +80,10 @@ class AstPrinter implements Expr.Visitor<String>, Stmt.Visitor<String> {
         return null;
     }
 
+    @Override
+    public String visitBlockStmt(Stmt.Block stmt) {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
 }

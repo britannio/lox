@@ -2,7 +2,6 @@ package dev.britannio.lox;
 
 import java.util.List;
 
-
 /**
  * Executes an expression.
  */
@@ -167,6 +166,23 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
         stmt.accept(this);
     }
 
+    void executeBlock(List<Stmt> statements, Environment environment) {
+        Environment previous = this.environment;
+        try {
+            this.environment = environment;
+            
+            for (Stmt statement : statements) {
+                execute(statement);
+            }
+        } finally {
+            // Code in this finally block will always run even if an exception
+            // (possibly unchecked) is thrown.
+
+            // Restore the environment
+            this.environment = previous;
+        }
+    }
+
     @Override
     public Void visitExpressionStmt(Stmt.Expression stmt) {
         evaluate(stmt.expression);
@@ -202,6 +218,12 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     @Override
     public Object visitVariableExpr(Expr.Variable expr) {
         return environment.get(expr.name);
+    }
+
+    @Override
+    public Void visitBlockStmt(Stmt.Block stmt) {
+        executeBlock(stmt.statements, new Environment(environment));
+        return null;
     }
 
 }

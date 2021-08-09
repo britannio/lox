@@ -4,13 +4,24 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Stores global variables.
+ * Handles the storage and access of scoped variables.
  */
 public class Environment {
+
+    Environment() {
+        enclosing = null;
+    }
+
+    Environment(Environment enclosing) {
+        this.enclosing = enclosing;
+    }
+
+    final Environment enclosing;
     private final Map<String, Object> values = new HashMap<>();
 
     /**
      * Defines a new variable. If the variable exists, it's value is overridden.
+     * 
      * @param name
      * @param value
      */
@@ -25,13 +36,16 @@ public class Environment {
     /**
      * Gets the variable belonging to the provided name. If no variable with the
      * provided name exists, a RuntimeError is thrown.
+     * 
      * @param name
-     * @return 
+     * @return
      */
     Object get(Token name) {
         if (values.containsKey(name.lexeme)) {
             return values.get(name.lexeme);
         }
+
+        if (enclosing != null) return enclosing.get(name);
 
         throw new RuntimeError(name, String.format("Undefined variable '%s'.", name.lexeme));
     }
@@ -39,6 +53,7 @@ public class Environment {
     /**
      * Assigns a value to an existing variable. If the variable does not already
      * exist then a RuntimeError is thrown.
+     * 
      * @param name
      * @param value
      */
@@ -46,6 +61,10 @@ public class Environment {
         if (values.containsKey(name.lexeme)) {
             values.put(name.lexeme, value);
             return;
+        }
+
+        if (enclosing != null) {
+            enclosing.assign(name, value);
         }
 
         throw new RuntimeError(name, String.format("Undefined variable '%s'.", name.lexeme));
