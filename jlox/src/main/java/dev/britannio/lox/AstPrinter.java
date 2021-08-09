@@ -1,5 +1,7 @@
 package dev.britannio.lox;
 
+import java.util.Arrays;
+import java.util.List;
 
 class AstPrinter implements Expr.Visitor<String>, Stmt.Visitor<String> {
 
@@ -8,11 +10,26 @@ class AstPrinter implements Expr.Visitor<String>, Stmt.Visitor<String> {
                 new Expr.Unary(new Token(TokenType.MINUS, "-", null, 1), new Expr.Literal(123)),
                 new Token(TokenType.STAR, "*", null, 1), new Expr.Grouping(new Expr.Literal(45.67)));
 
-        System.out.println(new AstPrinter().print(expression));
+        var block = new Stmt.Block(Arrays.asList( //
+                new Stmt.Var(new Token(TokenType.VAR, "a", null, 1), expression),
+                new Stmt.Var(new Token(TokenType.VAR, "b", null, 1), expression),
+                new Stmt.Block(Arrays.asList(new Stmt.Var(new Token(TokenType.VAR, "a", null, 1), expression),
+                        new Stmt.Var(new Token(TokenType.VAR, "b", null, 1), expression)))//
+        ));
+        System.out.println(new AstPrinter().print(Arrays.asList(block)));
     }
 
     String print(Expr expr) {
         return expr.accept(this);
+    }
+
+    String print(List<Stmt> statements) {
+        var builder = new StringBuilder();
+        for (Stmt statement : statements) {
+            builder.append(statement.accept(this));
+        }
+
+        return builder.toString();
     }
 
     @Override
@@ -52,38 +69,49 @@ class AstPrinter implements Expr.Visitor<String>, Stmt.Visitor<String> {
 
     @Override
     public String visitVariableExpr(Expr.Variable expr) {
-        // TODO Auto-generated method stub
-        return null;
+        return expr.name.lexeme;
     }
 
     @Override
     public String visitExpressionStmt(Stmt.Expression stmt) {
-        // TODO Auto-generated method stub
-        return null;
+        return stmt.expression.accept(this);
     }
 
     @Override
     public String visitPrintStmt(Stmt.Print stmt) {
-        // TODO Auto-generated method stub
-        return null;
+        return "print " + stmt.expression.accept(this) + ";\n";
     }
 
     @Override
     public String visitVarStmt(Stmt.Var stmt) {
-        // TODO Auto-generated method stub
-        return null;
+        String expr = stmt.initializer.accept(this);
+        return "var " + stmt.name.lexeme + " = " + expr + ";\n";
     }
 
     @Override
     public String visitAssignExpr(Expr.Assign expr) {
-        // TODO Auto-generated method stub
-        return null;
+        return expr.name.lexeme + " = " + expr.value.accept(this);
+
     }
 
     @Override
     public String visitBlockStmt(Stmt.Block stmt) {
-        // TODO Auto-generated method stub
-        return null;
+        var str = new StringBuilder();
+
+        str.append("{\n");
+        for (Stmt statement : stmt.statements) {
+            var resolved = statement.accept(this);
+            var lines = resolved.split("\n");
+            for (var line : lines) {
+                str.append("  ");
+                str.append(line);
+                str.append("\n");
+            }
+        }
+        str.append("}\n");
+
+        return str.toString();
+
     }
 
 }
