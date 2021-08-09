@@ -12,7 +12,7 @@ declaration    → varDecl | statement
 varDecl        → "var" IDENTIFIER ( "=" expression )? ";"
 statement      → exprStmt | printStmt | block
 exprStmt       → expression ";" 
-printStmt      → "print" expression ";" 
+printStmt      → "print" expression ";"? 
 block          → "{" declaration* "}"
 expression     → assignment
 assignment     → IDENTIFIER "=" assignment | equality
@@ -135,13 +135,13 @@ class Parser {
     }
 
     /**
-     * BNF: expression ";"
+     * BNF: expression ";"?
      * 
      * @return
      */
     private Stmt expressionStatement() {
         Expr expr = expression();
-        consume(SEMICOLON, "Expect ';' after expression.");
+        match(SEMICOLON);
         return new Stmt.Expression(expr);
     }
 

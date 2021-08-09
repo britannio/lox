@@ -7,8 +7,22 @@ import java.util.List;
  */
 public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     private Environment environment = new Environment();
+    private static final Config defaultConfig = new Config(false);
+    private Config config = defaultConfig;
+
+    static record Config(boolean printExpressions) {
+    }
 
     public void interpret(List<Stmt> statements) {
+        interpret(statements, null);
+    }
+
+    public void interpret(List<Stmt> statements, Config config) {
+        if (config == null) {
+            config = defaultConfig;
+        } else {
+            this.config = config;
+        }
         try {
             for (Stmt statement : statements) {
                 execute(statement);
@@ -170,7 +184,7 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
         Environment previous = this.environment;
         try {
             this.environment = environment;
-            
+
             for (Stmt statement : statements) {
                 execute(statement);
             }
@@ -183,17 +197,23 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
         }
     }
 
+    private void print(Object value) {
+        System.out.println(stringify(value));
+    }
+
     @Override
     public Void visitExpressionStmt(Stmt.Expression stmt) {
-        evaluate(stmt.expression);
+        Object value = evaluate(stmt.expression);
+        if (config.printExpressions) {
+            print(value);
+        }
         return null;
-
     }
 
     @Override
     public Void visitPrintStmt(Stmt.Print stmt) {
         Object value = evaluate(stmt.expression);
-        System.out.println(stringify(value));
+        print(value);
         return null;
     }
 

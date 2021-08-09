@@ -33,7 +33,7 @@ public class Lox {
     private static void runFile(String path) throws IOException {
         // Suitable for small files as it reads the whole file at once.
         byte[] bytes = Files.readAllBytes(Paths.get(path));
-        run(new String(bytes, Charset.defaultCharset()));
+        run(new String(bytes, Charset.defaultCharset()), false);
 
         // The code has an error
         if (hadError)
@@ -43,7 +43,8 @@ public class Lox {
     }
 
     /**
-     * Runs Lox in REPL(read-eval-print-loop) mode 
+     * Runs Lox in REPL(read-eval-print-loop) mode
+     * 
      * @throws IOException
      */
     private static void runPrompt() throws IOException {
@@ -56,13 +57,13 @@ public class Lox {
             // Exit shortcut was triggered
             if (line == null)
                 break;
-            run(line);
+            run(line, true);
             // Resets for the next piece of code to run
             hadError = false;
         }
     }
 
-    private static void run(String source) {
+    private static void run(String source, boolean printExpressions) {
         Scanner scanner = new Scanner(source);
         // Split the input into meaningful blobs of characters i.e. lexemes
         // [var language = "lox";] becomes [var] [language] [=] ["lox"] [;]
@@ -77,7 +78,7 @@ public class Lox {
         if (hadError)
             return;
 
-        interpreter.interpret(statements);
+        interpreter.interpret(statements, new Interpreter.Config(printExpressions));
 
     }
 
