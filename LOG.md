@@ -74,3 +74,30 @@ Output: -0.5
 Input: 1 + 2 * -3 / 4 == -0.5
 Output: true
 ```
+
+## 5 - Statements and State
+
+- Variables can be declared, assigned and referenced in expressions.
+- Statements can be grouped into blocks with local variable scope.
+- Expressions can be printed.
+
+Input:
+```dart
+var a = "global a";
+var b = "global b";
+{
+    var a = "local a";
+    print a;
+    print b;
+}
+print a;
+print b;
+```
+
+Output:
+```
+local a
+global b
+global a
+global b
+```
