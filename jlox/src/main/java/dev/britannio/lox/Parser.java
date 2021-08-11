@@ -10,12 +10,15 @@ import static dev.britannio.lox.TokenType.*;
 program        → declaration* EOF 
 declaration    → varDecl | statement
 varDecl        → "var" IDENTIFIER ( "=" expression )? ";"
-statement      → exprStmt | printStmt | block
+statement      → exprStmt | ifStmt | printStmt | block
 exprStmt       → expression ";" 
+ifStmt         → "if" "(" expression ")" statement ( "else" statement )?
 printStmt      → "print" expression ";"? 
 block          → "{" declaration* "}"
 expression     → assignment
-assignment     → IDENTIFIER "=" assignment | equality
+assignment     → IDENTIFIER "=" assignment | logic_or
+logic_or       → logic_and ( "or" logic_and )*
+logic_and      → equality ( "and" equality )*
 equality       → comparison ( ( "!=" | "==" ) comparison )* 
 comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )* 
 term           → factor ( ( "-" | "+" ) factor )* 
@@ -93,17 +96,43 @@ class Parser {
     }
 
     /**
-     * BNF: exprStmt | printStmt | block
+     * BNF: exprStmt | ifStmt | printStmt | block
      * 
      * @return
      */
     private Stmt statement() {
+        if (match(IF))
+            return ifStatement();
         if (match(PRINT))
             return printStatement();
         if (match(LEFT_BRACE))
             return new Stmt.Block(block());
 
         return expressionStatement();
+    }
+
+    /**
+     * BNF: "if" "(" expression ")" statement ( "else" statement )?
+     * 
+     * Else statements belong to the closest if statement e.g., for the folliwng
+     * statements, else whenFalse() belongs to if (second)
+     * 
+     * if (first) if (second) whenTrue(); else whenFalse();
+     * 
+     * @return
+     */
+    private Stmt ifStatement() {
+        consume(LEFT_PAREN, "Expect '(' after 'if'.");
+        Expr condition = expression();
+        consume(RIGHT_PAREN, "Expect ')' after if condition.");
+
+        Stmt thenBranch = statement();
+        Stmt elseBranch = null;
+        if (match(ELSE)) {
+            elseBranch = statement();
+        }
+
+        return new Stmt.If(condition, thenBranch, elseBranch);
     }
 
     /**
@@ -147,11 +176,12 @@ class Parser {
 
     /**
      * BNF: "{" declaration* "}"
+     * 
      * @return
      */
     private List<Stmt> block() {
         List<Stmt> statements = new ArrayList<>();
-        
+
         while (!check(RIGHT_BRACE) && !isAtEnd()) {
             statements.add(declaration());
         }
@@ -161,7 +191,7 @@ class Parser {
     }
 
     /**
-     * BNF: IDENTIFIER "=" assignment | equality
+     * BNF: IDENTIFIER "=" assignment | logic_or
      * 
      * @return
      */
@@ -169,7 +199,7 @@ class Parser {
         // Valid assignment targets (identifiers) can always be treated as
         // expressions e.g., the a in a=1; is valid on its own. If = is matched
         // then the expression is casted to a variable.
-        Expr expr = equality();
+        Expr expr = or();
 
         if (match(EQUAL)) {
             Token equals = previous();
@@ -181,6 +211,41 @@ class Parser {
             }
 
             error(equals, "Invalid assignment target.");
+        }
+
+        return expr;
+    }
+
+    /**
+     * BNF: logic_and ( "or" logic_and )*
+     * 
+     * @return
+     */
+    private Expr or() {
+        Expr expr = and();
+
+        while (match(OR)) {
+            Token operator = previous();
+            Expr right = and();
+            expr = new Expr.Logical(expr, operator, right);
+        }
+
+        return expr;
+    }
+
+    /**
+     * BNF: equality ( "and" equality )*
+     * 
+     * @return
+     */
+    private Expr and() {
+        Expr expr = equality();
+
+        while (match(AND)) {
+            // The consumed AND token
+            Token operator = previous();
+            Expr right = equality();
+            expr = new Expr.Logical(expr, operator, right);
         }
 
         return expr;
