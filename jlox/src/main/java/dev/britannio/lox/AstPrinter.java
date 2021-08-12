@@ -119,11 +119,11 @@ class AstPrinter implements Expr.Visitor<String>, Stmt.Visitor<String> {
         var str = new StringBuilder();
         str.append("if (");
         str.append(stmt.condition.accept(this));
-        str.append(")");
+        str.append(") ");
         str.append(stmt.thenBranch.accept(this));
 
         if (stmt.elseBranch != null) {
-            str.append("else");
+            str.append("else ");
             str.append(stmt.thenBranch.accept(this));
         }
 
@@ -137,10 +137,10 @@ class AstPrinter implements Expr.Visitor<String>, Stmt.Visitor<String> {
         str.append(expr.left.accept(this));
         switch (expr.operator.type) {
             case OR:
-                str.append("OR");
+                str.append(" OR ");
                 break;
             case AND:
-                str.append("AND");
+                str.append(" AND ");
                 break;
             default:
                 break;
@@ -149,6 +149,18 @@ class AstPrinter implements Expr.Visitor<String>, Stmt.Visitor<String> {
 
         return str.toString();
 
+    }
+
+    @Override
+    public String visitWhileStmt(Stmt.While stmt) {
+        var str = new StringBuilder();
+
+        str.append("while (");
+        str.append(stmt.condition.accept(this));
+        str.append(")\n");
+        str.append(stmt.body.accept(this));
+
+        return str.toString();
     }
 
 }

@@ -32,6 +32,7 @@ public class GenerateAst {
             System.exit(64);
         }
         String outputDir = args[0];
+        
         defineAst(outputDir, "Expr", Arrays.asList( //
                 "Literal  : Object value", "Grouping : Expr expression", //
                 "Logical  : Expr left, Token operator, Expr right", //
@@ -44,9 +45,10 @@ public class GenerateAst {
         defineAst(outputDir, "Stmt", Arrays.asList( //
                 "Expression : Expr expression", //
                 "If         : Expr condition, Stmt thenBranch," + " Stmt elseBranch", //
+                "Block      : List<Stmt> statements", //
                 "Print      : Expr expression", //
                 "Var        : Token name, Expr initializer", //
-                "Block      : List<Stmt> statements" //
+                "While      : Expr condition, Stmt body" //
         ), Arrays.asList("import java.util.List;"));
     }
 

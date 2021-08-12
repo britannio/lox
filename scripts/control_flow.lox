@@ -1,0 +1,14 @@
+var a = true;
+if (a) print "a is truthy";
+else print "a is falsey";
+
+var b = nil;
+if (b) print "b is truthy";
+else print "b is falsey";
+
+
+var i = 0;
+while (i<10 and true) {
+    print "i: " + i;
+    i = i + 1;
+}
