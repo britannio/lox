@@ -101,3 +101,22 @@ global b
 global a
 global b
 ```
+
+## 6 - Control Flow
+
+- With the addition of while/for loops and more importantly **if statements**, Jlox is now Turing Complete!
+- Logical expressions (AND/OR) can be evaluated.
+
+```dart
+if (2 + 2 - 1 == 3) print "Quick math!"; 
+else print "Slow math :(";
+// prints Quick math!
+
+var result = 0;
+while (result != 5) {
+    result = result + 1;
+}
+print result; // prints 5
+
+print false and false or true; // prints true
+```
