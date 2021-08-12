@@ -1,6 +1,7 @@
 package dev.britannio.lox;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import static dev.britannio.lox.TokenType.*;
@@ -10,8 +11,9 @@ import static dev.britannio.lox.TokenType.*;
 program        → declaration* EOF 
 declaration    → varDecl | statement
 varDecl        → "var" IDENTIFIER ( "=" expression )? ";"
-statement      → exprStmt | ifStmt | printStmt | whileStmt | block
-exprStmt       → expression ";" 
+statement      → exprStmt | forStmt | ifStmt | printStmt | whileStmt | block
+exprStmt       → expression ";"?
+forStmt        → "for" "(" ( varDecl | exprStmt | ";" ) expression? ";" expression? ")" statement 
 ifStmt         → "if" "(" expression ")" statement ( "else" statement )?
 printStmt      → "print" expression ";"? 
 whileStmt      → "while" "(" expression ")" statement
@@ -97,11 +99,13 @@ class Parser {
     }
 
     /**
-     * BNF: exprStmt | ifStmt | printStmt | whileStmt | block
+     * BNF: exprStmt | forStmt | ifStmt | printStmt | whileStmt | block
      * 
      * @return
      */
     private Stmt statement() {
+        if (match(FOR))
+            return forStatement();
         if (match(IF))
             return ifStatement();
         if (match(PRINT))
@@ -112,6 +116,77 @@ class Parser {
             return new Stmt.Block(block());
 
         return expressionStatement();
+    }
+
+    /**
+     * BNF: "for" "(" ( varDecl | exprStmt | ";" ) expression? ";" expression? ")"
+     * statement
+     * 
+     * @return
+     */
+    private Stmt forStatement() {
+        consume(LEFT_PAREN, "Expect '(' after 'for'.");
+
+        Stmt initialiser;
+        if (match(SEMICOLON)) {
+            // No initialiser
+            initialiser = null;
+        } else if (match(VAR)) {
+            // varDecl initialiser
+            initialiser = varDeclaration();
+        } else {
+            // exprStmt initialiser
+            initialiser = expressionStatement();
+        }
+
+        // Loop condition
+        Expr condition = null;
+        if (!check(SEMICOLON)) {
+            condition = expression();
+        }
+        consume(SEMICOLON, "Expect ';' after loop condition.");
+
+        Expr increment = null;
+        if (!check(RIGHT_PAREN)) {
+            increment = expression();
+        }
+
+        consume(RIGHT_PAREN, "Expect ')' after for clauses");
+        Stmt body = statement();
+
+        // Now desugar the for loop into a while loop:
+        //
+        // for (initialiser; condition; increment) {
+        // body
+        // }
+        //
+        // becomes:
+        //
+        // initialiser;
+        // while (condition) {
+        // body
+        // increment
+        // }
+
+        if (increment != null) {
+            body = new Stmt.Block(Arrays.asList( //
+                    body, //
+                    new Stmt.Expression(increment)//
+            ));
+        }
+
+        if (condition == null)
+            condition = new Expr.Literal(true);
+        body = new Stmt.While(condition, body);
+
+        if (initialiser != null) {
+            body = new Stmt.Block(Arrays.asList( //
+                    initialiser, //
+                    body //
+            ));
+        }
+
+        return body;
     }
 
     /**
