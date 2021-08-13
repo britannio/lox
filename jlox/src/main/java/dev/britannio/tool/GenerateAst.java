@@ -32,15 +32,17 @@ public class GenerateAst {
             System.exit(64);
         }
         String outputDir = args[0];
-        
+
         defineAst(outputDir, "Expr", Arrays.asList( //
-                "Literal  : Object value", "Grouping : Expr expression", //
+                "Literal  : Object value", //
                 "Logical  : Expr left, Token operator, Expr right", //
                 "Unary    : Token operator, Expr right", //
                 "Binary   : Expr left, Token operator, Expr right", //
+                "Call     : Expr callee, Token paren, List<Expr> arguments", //
+                "Grouping : Expr expression", //
                 "Variable : Token name", //
                 "Assign   : Token name, Expr value"//
-        ), Arrays.asList());
+        ), Arrays.asList("import java.util.List;"));
 
         defineAst(outputDir, "Stmt", Arrays.asList( //
                 "Expression : Expr expression", //

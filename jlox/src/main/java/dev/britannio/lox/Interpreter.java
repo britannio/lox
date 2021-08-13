@@ -1,5 +1,6 @@
 package dev.britannio.lox;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -284,6 +285,33 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
         }
 
         return evaluate(expr.right);
+
+    }
+
+    @Override
+    public Object visitCallExpr(Expr.Call expr) {
+        // The function/class being called
+        Object callee = evaluate(expr.callee);
+
+        List<Object> arguments = new ArrayList<>();
+        for (Expr argument : expr.arguments) {
+            arguments.add(evaluate(argument));
+        }
+
+        // The callee must be a callable function/class
+        if (!(callee instanceof LoxCallable)) {
+            throw new RuntimeError(expr.paren, "Can only call functions and classes");
+        }
+
+        LoxCallable function = (LoxCallable) callee;
+
+        // Ensure that the correct number of arguments are provided
+        if (arguments.size() != function.arity()) {
+            throw new RuntimeError(expr.paren,
+                    String.format("Expected %d arguments but got %d arguments.", arguments.size(), function.arity()));
+        }
+
+        return function.call(this, arguments);
 
     }
 

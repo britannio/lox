@@ -163,4 +163,24 @@ class AstPrinter implements Expr.Visitor<String>, Stmt.Visitor<String> {
         return str.toString();
     }
 
+    @Override
+    public String visitCallExpr(Expr.Call expr) {
+        var str = new StringBuilder();
+
+        str.append(expr.callee.accept(this));
+        str.append("(");
+        for (int i = 0; i < expr.arguments.size(); i++) {
+            var arg = expr.arguments.get(i);
+            str.append(arg.accept(this));
+
+            if (i + 1 < expr.arguments.size()) {
+                // Not the last argument
+                str.append(", ");
+            }
+        }
+        str.append(")");
+
+        return str.toString();
+    }
+
 }

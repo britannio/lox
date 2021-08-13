@@ -6,7 +6,7 @@ import java.util.List;
 
 import static dev.britannio.lox.TokenType.*;
 
-/* Lox GRAMMAR
+/* Lox GRAMMAR (lowest to highest precedence)
 --------------------------------------------------------------
 program        → declaration* EOF 
 declaration    → varDecl | statement
@@ -26,7 +26,9 @@ equality       → comparison ( ( "!=" | "==" ) comparison )*
 comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )* 
 term           → factor ( ( "-" | "+" ) factor )* 
 factor         → unary ( ( "/" | "*" ) unary )* 
-unary          → ( "!" | "-" ) unary | primary 
+unary          → ( "!" | "-" ) unary | call 
+call           → primary ( "(" arguments? ")" )*
+arguments      → expression ( "," expression )*
 primary        → NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")" | IDENTIFIER 
 */
 
@@ -414,7 +416,7 @@ class Parser {
     }
 
     /**
-     * BNF: ( "!" | "-" ) unary | primary
+     * BNF: ( "!" | "-" ) unary | call
      * 
      * @return
      */
@@ -425,7 +427,48 @@ class Parser {
             return new Expr.Unary(operator, right);
         }
 
-        return primary();
+        return call();
+    }
+
+    /**
+     * 
+     * @param callee
+     * @return
+     */
+    private Expr finishCall(Expr callee) {
+        List<Expr> arguments = new ArrayList<>();
+        if (!check(RIGHT_PAREN)) {
+            do {
+                if (arguments.size() >= 255) {
+                    // We're still in a valid state so no error is thrown.
+                    error(peek(), "Can't have more than 255 arguments.");
+                }
+                arguments.add(expression());
+            } while (match(COMMA));
+        }
+
+        Token paren = consume(RIGHT_PAREN, "Expect ')' after arguments.");
+
+        return new Expr.Call(callee, paren, arguments);
+    }
+
+    /**
+     * primary ( "(" arguments? ")" )*
+     * 
+     * @return
+     */
+    private Expr call() {
+        Expr expr = primary();
+
+        while (true) {
+            if (match(LEFT_PAREN)) {
+                expr = finishCall(expr);
+            } else {
+                break;
+            }
+        }
+
+        return expr;
     }
 
     private Expr primary() {
