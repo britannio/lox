@@ -183,4 +183,25 @@ class AstPrinter implements Expr.Visitor<String>, Stmt.Visitor<String> {
         return str.toString();
     }
 
+    @Override
+    public String visitFunctionStmt(Stmt.Function stmt) {
+        var str = new StringBuilder();
+        str.append("fun ");
+
+        str.append(stmt.name.lexeme);
+        str.append("(");
+        for (int i = 0; i < stmt.params.size(); i++) {
+            var token = stmt.params.get(i);
+            str.append(token.lexeme);
+
+            if (i + 1 < stmt.params.size()) {
+                // Not the last parameter
+                str.append(", ");
+            }
+        }
+        str.append(")");
+
+        return str.toString();
+    }
+
 }

@@ -9,7 +9,10 @@ import static dev.britannio.lox.TokenType.*;
 /* Lox GRAMMAR (lowest to highest precedence)
 --------------------------------------------------------------
 program        → declaration* EOF 
-declaration    → varDecl | statement
+declaration    → funcDecl | varDecl | statement
+funDecl        → "fun" function
+function       → IDENTIFIER "(" parameters? ")" block
+parameters     → IDENTIFIER ( "," IDENTIFIER )*
 varDecl        → "var" IDENTIFIER ( "=" expression )? ";"
 statement      → exprStmt | forStmt | ifStmt | printStmt | whileStmt | block
 exprStmt       → expression ";"?
@@ -82,15 +85,16 @@ class Parser {
     }
 
     /**
-     * BNF: varDecl | statement
+     * BNF: funcDecl | varDecl | statement
      * 
      * @return
      */
     private Stmt declaration() {
         try {
-            if (match(VAR)) {
+            if (match(FUN))
+                return function("function");
+            if (match(VAR))
                 return varDeclaration();
-            }
 
             return statement();
         } catch (ParseError error) {
@@ -266,6 +270,36 @@ class Parser {
         Expr expr = expression();
         match(SEMICOLON);
         return new Stmt.Expression(expr);
+    }
+
+    /**
+     * BNF: IDENTIFIER "(" parameters? ")" block
+     * 
+     * @param kind
+     * @return
+     */
+    private Stmt.Function function(String kind) {
+        Token name = consume(IDENTIFIER, "Expect " + kind + " name.");
+        consume(LEFT_PAREN, "Expect '(' after " + kind + " name.");
+        List<Token> parameters = new ArrayList<>();
+
+        if (!check(RIGHT_PAREN)) {
+            // The function has parameters
+            do {
+                if (parameters.size() >= 255) {
+                    error(peek(), "Can't have more than 255 parameters.");
+                }
+
+                parameters.add(consume(IDENTIFIER, "Expect parameter name."));
+
+            } while (match(COMMA));
+        }
+        consume(RIGHT_PAREN, "Expect ')' after parameters.");
+        
+        // Parse function body
+        consume(LEFT_BRACE, "Expect '{' before " + kind + " body.");
+        List<Stmt> body = block();
+        return new Stmt.Function(name, parameters, body);
     }
 
     /**
