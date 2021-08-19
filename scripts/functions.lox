@@ -1,0 +1,13 @@
+fun sayHi(first, last) {
+    print "Hi, " + first + " " + last + "!";
+}
+
+sayHi("Dear", "Universe");
+
+fun minutesSinceEpoch(seconds) {
+	print seconds / 60;
+}
+
+minutesSinceEpoch(clock())
+
+

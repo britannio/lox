@@ -199,8 +199,11 @@ class AstPrinter implements Expr.Visitor<String>, Stmt.Visitor<String> {
                 str.append(", ");
             }
         }
-        str.append(")");
-
+        str.append(") {\n");
+        for (var statement : stmt.body) {
+            str.append(statement.accept(this));
+        }
+        str.append("}");
         return str.toString();
     }
 
