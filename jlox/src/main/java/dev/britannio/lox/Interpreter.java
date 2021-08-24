@@ -5,7 +5,7 @@ import java.util.List;
 
 
 /**
- * Executes an expression.
+ * Executes a list of statements.
  */
 public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     Interpreter() {
