@@ -19,9 +19,18 @@ for (var i = 0; i < 20; i = i + 1) {
 }
 
 
-fun outer() {
-  fun inner() {
-    print "inner";
+// Closure example
+
+fun makeCounter() {
+  var i = 0;
+  fun count() {
+    i = i + 1;
+    print i;
   }
-    print "outer";
+
+  return count;
 }
+
+var counter = makeCounter();
+counter(); // "1".
+counter(); // "2".
