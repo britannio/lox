@@ -14,7 +14,8 @@ funDecl        → "fun" function
 function       → IDENTIFIER "(" parameters? ")" block
 parameters     → IDENTIFIER ( "," IDENTIFIER )*
 varDecl        → "var" IDENTIFIER ( "=" expression )? ";"
-statement      → exprStmt | forStmt | ifStmt | printStmt | whileStmt | block
+statement      → exprStmt | forStmt | ifStmt | printStmt | returnStmt | whileStmt | block
+returnStmt     → "return" expression? ";"
 exprStmt       → expression ";"?
 forStmt        → "for" "(" ( varDecl | exprStmt | ";" ) expression? ";" expression? ")" statement 
 ifStmt         → "if" "(" expression ")" statement ( "else" statement )?
@@ -105,7 +106,7 @@ class Parser {
     }
 
     /**
-     * BNF: exprStmt | forStmt | ifStmt | printStmt | whileStmt | block
+     * BNF: exprStmt | forStmt | ifStmt | printStmt | returnStmt | whileStmt | block
      * 
      * @return
      */
@@ -116,6 +117,8 @@ class Parser {
             return ifStatement();
         if (match(PRINT))
             return printStatement();
+        if (match(RETURN))
+            return returnSatement();
         if (match(WHILE))
             return whileStatement();
         if (match(LEFT_BRACE))
@@ -231,6 +234,24 @@ class Parser {
     }
 
     /**
+     * BNF: "return" expression? ";"
+     * 
+     * @return
+     */
+    private Stmt returnSatement() {
+        Token keyword = previous();
+        Expr value = null;
+        if (!check(SEMICOLON)) {
+            // An expression cannot begin with a semicolon so since it's not
+            // present, an expression is present.
+            value = expression();
+        }
+
+        consume(SEMICOLON, "Expect ';' after return value.");
+        return new Stmt.Return(keyword, value);
+    }
+
+    /**
      * BNF: "var" IDENTIFIER ( "=" expression )? ";"
      * 
      * @return
@@ -295,7 +316,7 @@ class Parser {
             } while (match(COMMA));
         }
         consume(RIGHT_PAREN, "Expect ')' after parameters.");
-        
+
         // Parse function body
         consume(LEFT_BRACE, "Expect '{' before " + kind + " body.");
         List<Stmt> body = block();

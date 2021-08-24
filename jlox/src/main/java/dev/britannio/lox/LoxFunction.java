@@ -23,7 +23,13 @@ public class LoxFunction implements LoxCallable {
             environment.define(argumentName, arguments.get(i));
         }
 
-        interpreter.executeBlock(declaration.body, environment);
+        try {
+            interpreter.executeBlock(declaration.body, environment);
+        } catch (Return returnValue) {
+            // Return was thrown to indicate that this function has terminated.
+            return returnValue.value;
+        }
+        // The function reached the end of its body without a return statement.
         return null;
     }
 

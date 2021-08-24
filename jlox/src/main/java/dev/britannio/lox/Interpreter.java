@@ -3,6 +3,7 @@ package dev.britannio.lox;
 import java.util.ArrayList;
 import java.util.List;
 
+
 /**
  * Executes an expression.
  */
@@ -343,6 +344,15 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
 
         return function.call(this, arguments);
 
+    }
+
+    @Override
+    public Void visitReturnStmt(Stmt.Return stmt) {
+        Object value = null;
+        if (stmt.value != null) value = evaluate(stmt.value);
+        
+        // 
+        throw new Return(value);
     }
 
 }

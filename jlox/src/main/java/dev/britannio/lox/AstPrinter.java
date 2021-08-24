@@ -5,6 +5,7 @@ import java.util.List;
 
 class AstPrinter implements Expr.Visitor<String>, Stmt.Visitor<String> {
 
+
     public static void main(String[] args) {
         Expr expression = new Expr.Binary(
                 new Expr.Unary(new Token(TokenType.MINUS, "-", null, 1), new Expr.Literal(123)),
@@ -101,12 +102,7 @@ class AstPrinter implements Expr.Visitor<String>, Stmt.Visitor<String> {
         str.append("{\n");
         for (Stmt statement : stmt.statements) {
             var resolved = statement.accept(this);
-            var lines = resolved.split("\n");
-            for (var line : lines) {
-                str.append("  ");
-                str.append(line);
-                str.append("\n");
-            }
+            str.append(indent(resolved));
         }
         str.append("}\n");
 
@@ -200,10 +196,38 @@ class AstPrinter implements Expr.Visitor<String>, Stmt.Visitor<String> {
             }
         }
         str.append(") {\n");
+        
         for (var statement : stmt.body) {
-            str.append(statement.accept(this));
+            str.append(indent(statement.accept(this)));
         }
-        str.append("}");
+
+        str.append("}\n");
+        return str.toString();
+    }
+
+    @Override
+    public String visitReturnStmt(Stmt.Return stmt) {
+        var str = new StringBuilder();
+        
+        str.append("return ");
+        str.append(stmt.value.accept(this));
+        str.append(";\n");
+        
+        return str.toString();
+    }
+
+
+    
+    private String indent(String value) {
+        var str = new StringBuilder();
+        var lines = value.split("\n");
+        
+        for (var line: lines) {
+            str.append("  ");
+            str.append(line);
+            str.append("\n");
+        }
+        
         return str.toString();
     }
 
