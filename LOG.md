@@ -120,3 +120,19 @@ print result; // prints 5
 
 print false and false or true; // prints true
 ```
+
+## 7 - Functions
+
+Functions can be declared and invoked!
+
+```kotlin 
+fun fib(n) {
+  if (n <= 1) return n;
+  return fib(n - 2) + fib(n - 1);
+}
+
+print fib(10); // prints 55
+
+// A native function
+print clock(); // prints seconds since Jan 1, 1970
+```
