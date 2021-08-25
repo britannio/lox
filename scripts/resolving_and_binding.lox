@@ -1,6 +1,10 @@
-var a = "outer";
+var a = "global";
 {
- var a = a;
- print a;
- 
+  fun showA() {
+    print a;
+  }
+
+  showA();
+  var a = "block";
+  showA();
 }

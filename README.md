@@ -164,3 +164,41 @@ print fib(10); // prints 55
 // A native function
 print clock(); // prints seconds since Jan 1, 1970
 ```
+
+## 8 - Resolving and Binding
+
+Variables resolve to the correct scope.
+
+```java
+var a = "global";
+{
+  fun showA() {
+    print a;
+  }
+
+  showA();
+  var a = "block";
+  showA();
+}
+ ```
+
+Previously this would output:
+```
+global
+block
+```
+It now outputs:
+```
+global
+global
+```
+
+---
+
+This code now produces an error during semantic analysis.
+```java
+{
+    var a = 1;
+    var a = 2;
+}
+```
