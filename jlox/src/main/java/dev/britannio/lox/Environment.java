@@ -33,6 +33,24 @@ public class Environment {
         values.put(name, value);
     }
 
+    Environment ancestor(int distance) {
+        Environment environment = this;
+        
+        for (int i = 0; i < distance; i++) {
+            environment = environment.enclosing;
+        }
+        
+        return environment;
+    }
+
+    Object getAt(int distance, String name) {
+        return ancestor(distance).values.get(name);
+    }
+
+    void assignAt(int distance, Token name, Object value) {
+        ancestor(distance).values.put(name.lexeme, value);
+    }
+
     /**
      * Gets the variable belonging to the provided name. If no variable with the
      * provided name exists, a RuntimeError is thrown.

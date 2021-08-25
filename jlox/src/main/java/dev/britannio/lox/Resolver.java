@@ -5,12 +5,20 @@ import java.util.List;
 import java.util.Map;
 import java.util.Stack;
 
+/**
+ * Assigns variables a fixed depth.
+ */
 public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     private final Interpreter interpreter;
     private final Stack<Map<String, Boolean>> scopes = new Stack<>();
+    private FunctionType currentFunction = FunctionType.NONE;
 
     public Resolver(Interpreter interpreter) {
         this.interpreter = interpreter;
+    }
+
+    private enum FunctionType {
+        NONE, FUNCTION
     }
 
     public void resolve(List<Stmt> statements) {
@@ -35,12 +43,13 @@ public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 
     @Override
     public Void visitFunctionStmt(Stmt.Function stmt) {
+
         declare(stmt.name);
         // The name is defined before resolving the function body to allow the
         // function to recursively refer to itself.
         define(stmt.name);
 
-        resolveFunction(stmt);
+        resolveFunction(stmt, FunctionType.FUNCTION);
         return null;
     }
 
@@ -87,26 +96,27 @@ public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
         resolve(expr.expression);
         return null;
     }
+
     @Override
     public Void visitLiteralExpr(Expr.Literal expr) {
         // Literals don't refer to variables or contain sub expressions that
         // could do so.
         return null;
     }
-        
+
     @Override
     public Void visitLogicalExpr(Expr.Logical expr) {
         resolve(expr.left);
         resolve(expr.right);
         return null;
     }
-    
+
     @Override
     public Void visitUnaryExpr(Expr.Unary expr) {
         resolve(expr.right);
         return null;
     }
-        
+
     @Override
     public Void visitVariableExpr(Expr.Variable expr) {
         if (!scopes.isEmpty() && scopes.peek().get(expr.name.lexeme) == Boolean.FALSE) {
@@ -125,7 +135,11 @@ public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
         expr.accept(this);
     }
 
-    private void resolveFunction(Stmt.Function function) {
+    private void resolveFunction(Stmt.Function function, FunctionType type) {
+        FunctionType enclosingFunction = currentFunction;
+        currentFunction = type;
+        
+        
         beginScope();
         for (Token param : function.params) {
             declare(param);
@@ -133,6 +147,7 @@ public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
         }
         resolve(function.body);
         endScope();
+        currentFunction = enclosingFunction;
     }
 
     private void beginScope() {
@@ -147,8 +162,14 @@ public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
         // Global variable
         if (scopes.isEmpty())
             return;
-        // Mark the variable as not ready
-        scopes.peek().put(name.lexeme, false);
+        Map<String, Boolean> scope = scopes.peek();
+        if (scope.containsKey(name.lexeme)) {
+            // The name of the variable being declared matches an existing 
+            // variable in this scope.
+            Lox.error(name, "Already a variable with this name in this scope.");
+        }
+        // Create the variable.
+        scope.put(name.lexeme, false);
     }
 
     private void define(Token name) {
@@ -167,13 +188,12 @@ public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
         }
     }
 
-    
-
     @Override
     public Void visitIfStmt(Stmt.If stmt) {
         resolve(stmt.condition);
         resolve(stmt.thenBranch);
-        if (stmt.elseBranch != null) resolve(stmt.elseBranch);
+        if (stmt.elseBranch != null)
+            resolve(stmt.elseBranch);
         return null;
     }
 
@@ -185,6 +205,10 @@ public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 
     @Override
     public Void visitReturnStmt(Stmt.Return stmt) {
+        if (currentFunction == FunctionType.NONE) {
+            // A return statement was misplaced outside of a function.
+            Lox.error(stmt.keyword, "Can't return from top-level code.");
+        }
         if (stmt.value != null) {
             resolve(stmt.value);
         }
@@ -198,15 +222,5 @@ public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
         resolve(stmt.body);
         return null;
     }
-
-    
-
-    
-
-    
-
-    
-
-    
 
 }

@@ -70,13 +70,19 @@ public class Lox {
         List<Token> tokens = scanner.scanTokens();
         // System.out.println(tokens);
 
+        // Parse tokens into a tree.
         var parser = new Parser(tokens);
         List<Stmt> statements = parser.parse();
         // System.out.println(new AstPrinter().print(statements));
 
-        // Stop if a syntax error is encountered.
+        // Stop if a syntax error was encountered.
         if (hadError)
             return;
+        
+        Resolver resolver = new Resolver(interpreter);
+        resolver.resolve(statements);
+        // Stop if a resolution error was encountered
+        if (hadError) return;
 
         interpreter.interpret(statements, new Interpreter.Config(printExpressions));
 
