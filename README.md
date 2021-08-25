@@ -2,7 +2,9 @@
 
 Lox is a full-featured, efficient scripting language from Robert Nystrom's book, [Crafting Interpreters](https://craftinginterpreters.com/). 
 
-Jlox is the Java implementation of Lox and is interpreted as an AST. Clox is the C implentation and runs Lox scripts with a Bytecode Virtual Machine.
+In Jlox, the Java implementation of Lox, scripts are parsed using a recursive descent parser then interpreted by traversing the generated AST.
+
+In Clox, the C implementation of Lox, scripts are compiled to bytecode then executed using a Bytecode Virtual Machine.
 
 A more complete description of the features of Lox can be found at https://craftinginterpreters.com/the-lox-language.html.
 
