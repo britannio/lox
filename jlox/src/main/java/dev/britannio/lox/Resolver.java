@@ -7,12 +7,17 @@ import java.util.Stack;
 
 
 /**
- * Assigns variables a fixed depth.
+ * Assigns variables a fixed depth. Also detects illegal uses of
+ * expressions and statements e.g., return statements outside a function or 
+ * 'this' outside of a class.
  */
 public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     private final Interpreter interpreter;
     private final Stack<Map<String, Boolean>> scopes = new Stack<>();
+    /** Keeps track of whether we are inside a function or not. */
     private FunctionType currentFunction = FunctionType.NONE;
+    /** Keeps track of whether we are inside a class or not. */
+    private ClassType currentClass = ClassType.NONE;
 
     public Resolver(Interpreter interpreter) {
         this.interpreter = interpreter;
@@ -20,6 +25,10 @@ public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 
     private enum FunctionType {
         NONE, FUNCTION, METHOD,
+    }
+
+    private enum ClassType {
+        NONE, CLASS
     }
 
     public void resolve(List<Stmt> statements) {
@@ -38,10 +47,13 @@ public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 
     @Override
     public Void visitClassStmt(Stmt.Class stmt) {
+        ClassType enclosingClass = currentClass;
+        currentClass = ClassType.CLASS;
+        
         // In case a class is declared as a local variable
         declare(stmt.name);
         define(stmt.name);
-        
+
         beginScope();
         scopes.peek().put("this", true);
 
@@ -51,6 +63,9 @@ public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
         }
 
         endScope();
+        
+        // Reset current class
+        currentClass = enclosingClass;
 
         return null;
     }
@@ -138,13 +153,16 @@ public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
         return null;
     }
 
-    
     @Override
     public Void visitThisExpr(Expr.This expr) {
+        if (currentClass == ClassType.NONE) {
+           Lox.error(expr.keyword, "Can't use 'this' outside of a class."); 
+           return null;
+        }
         resolveLocal(expr, expr.keyword);
         return null;
     }
-    
+
     @Override
     public Void visitUnaryExpr(Expr.Unary expr) {
         resolve(expr.right);
@@ -261,6 +279,5 @@ public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
         resolve(expr.object);
         return null;
     }
-
 
 }
