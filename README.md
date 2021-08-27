@@ -202,3 +202,26 @@ This code now produces an error during semantic analysis.
     var a = 2;
 }
 ```
+
+
+## 9 - Classes
+
+Classes can be created!
+
+```java
+class Person {
+  // Class initialiser.
+  init(name) {
+    this.name = name;
+  }
+
+  // Class method.
+  greet() {
+    print "My name is " + this.name + " " + this.nameSuffix;
+  }
+}
+
+var britannio = Person("Britannio");
+britannio.nameSuffix = ":)";
+britannio.greet(); // prints "My name is Britannio :)"
+```

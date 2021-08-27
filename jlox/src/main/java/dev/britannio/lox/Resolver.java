@@ -5,11 +5,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Stack;
 
-
 /**
- * Assigns variables a fixed depth. Also detects illegal uses of
- * expressions and statements e.g., return statements outside a function or 
- * 'this' outside of a class.
+ * Assigns variables a fixed depth. Also detects illegal uses of expressions and
+ * statements e.g., return statements outside a function or 'this' outside of a
+ * class.
  */
 public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     private final Interpreter interpreter;
@@ -24,7 +23,7 @@ public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     }
 
     private enum FunctionType {
-        NONE, FUNCTION, METHOD,
+        NONE, FUNCTION, INITIALIZER, METHOD,
     }
 
     private enum ClassType {
@@ -49,7 +48,7 @@ public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     public Void visitClassStmt(Stmt.Class stmt) {
         ClassType enclosingClass = currentClass;
         currentClass = ClassType.CLASS;
-        
+
         // In case a class is declared as a local variable
         declare(stmt.name);
         define(stmt.name);
@@ -59,11 +58,14 @@ public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 
         for (Stmt.Function method : stmt.methods) {
             FunctionType declaration = FunctionType.METHOD;
+            if (method.name.lexeme.equals("init")) {
+                declaration = FunctionType.INITIALIZER;
+            }
             resolveFunction(method, declaration);
         }
 
         endScope();
-        
+
         // Reset current class
         currentClass = enclosingClass;
 
@@ -156,8 +158,8 @@ public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     @Override
     public Void visitThisExpr(Expr.This expr) {
         if (currentClass == ClassType.NONE) {
-           Lox.error(expr.keyword, "Can't use 'this' outside of a class."); 
-           return null;
+            Lox.error(expr.keyword, "Can't use 'this' outside of a class.");
+            return null;
         }
         resolveLocal(expr, expr.keyword);
         return null;
@@ -261,6 +263,9 @@ public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
             Lox.error(stmt.keyword, "Can't return from top-level code.");
         }
         if (stmt.value != null) {
+            if (currentFunction == FunctionType.INITIALIZER) {
+                Lox.error(stmt.keyword, "Can't return a value from an initializer.");
+            }
             resolve(stmt.value);
         }
 

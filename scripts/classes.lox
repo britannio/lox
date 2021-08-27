@@ -32,3 +32,22 @@ cake.flavor = "German chocolate";
 cake.taste();
 
 
+class Person {
+  
+  init(name) {
+    this.name = name;
+  }
+  
+  greet() {
+    print "My name is " + this.name + " " + this.nameSuffix;
+  }
+  
+}
+
+var britannio = Person("Britannio");
+britannio.nameSuffix = ":)"
+britannio.greet();
+// Class instances can be reinitialised.
+britannio.init("Brit");
+
+

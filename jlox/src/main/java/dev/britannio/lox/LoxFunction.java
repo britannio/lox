@@ -7,31 +7,32 @@ import dev.britannio.lox.Stmt.Function;
 public class LoxFunction implements LoxCallable {
     private final Stmt.Function declaration;
     private final Environment closure;
+    private final boolean isInitializer;
 
-    public LoxFunction(Function declaration, Environment closure) {
+    public LoxFunction(Function declaration, Environment closure, boolean isInitializer) {
         this.declaration = declaration;
         this.closure = closure;
+        this.isInitializer = isInitializer;
     }
 
     /**
-     * Creates an environment holding {@code instance} as 'this' and attaches
-     * it to a copy of this function.
+     * Creates an environment holding {@code instance} as 'this' and attaches it to
+     * a copy of this function.
      */
     LoxFunction bind(LoxInstance instance) {
         Environment environment = new Environment(closure);
         environment.define("this", instance);
-        return new LoxFunction(declaration, environment);
+        return new LoxFunction(declaration, environment, false);
     }
-
 
     @Override
     public int arity() {
         return declaration.params.size();
     }
-    
+
     /**
-     * Creates an environment for the function then populates it with the
-     * arguments of the function call before executing the function body.
+     * Creates an environment for the function then populates it with the arguments
+     * of the function call before executing the function body.
      */
     @Override
     public Object call(Interpreter interpreter, List<Object> arguments) {
@@ -47,8 +48,15 @@ public class LoxFunction implements LoxCallable {
             interpreter.executeBlock(declaration.body, environment);
         } catch (Return returnValue) {
             // Return was thrown to indicate that this function has terminated.
+            
+            // Returning early in an initialiser returns a reference to the 
+            // class
+            if (isInitializer) return closure.getAt(0, "this");
             return returnValue.value;
         }
+        // At the end of an initialiser, return a reference to the class.
+        if (isInitializer)
+            return closure.getAt(0, "this");
         // The function reached the end of its body without a return statement.
         return null;
     }
