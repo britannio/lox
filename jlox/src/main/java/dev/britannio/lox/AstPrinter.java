@@ -3,9 +3,7 @@ package dev.britannio.lox;
 import java.util.Arrays;
 import java.util.List;
 
-
 class AstPrinter implements Expr.Visitor<String>, Stmt.Visitor<String> {
-
 
     public static void main(String[] args) {
         Expr expression = new Expr.Binary(
@@ -48,6 +46,7 @@ class AstPrinter implements Expr.Visitor<String>, Stmt.Visitor<String> {
     public String visitLiteralExpr(Expr.Literal expr) {
         if (expr.value == null)
             return "nil";
+            if (expr.value instanceof String) return "\"" + expr.value + "\"" ;
         return expr.value.toString();
     }
 
@@ -197,7 +196,7 @@ class AstPrinter implements Expr.Visitor<String>, Stmt.Visitor<String> {
             }
         }
         str.append(") {\n");
-        
+
         for (var statement : stmt.body) {
             str.append(indent(statement.accept(this)));
         }
@@ -209,38 +208,36 @@ class AstPrinter implements Expr.Visitor<String>, Stmt.Visitor<String> {
     @Override
     public String visitReturnStmt(Stmt.Return stmt) {
         var str = new StringBuilder();
-        
+
         str.append("return ");
         str.append(stmt.value.accept(this));
         str.append(";\n");
-        
+
         return str.toString();
     }
 
-
-    
     private String indent(String value) {
         var str = new StringBuilder();
         var lines = value.split("\n");
-        
-        for (var line: lines) {
+
+        for (var line : lines) {
             str.append("  ");
             str.append(line);
             str.append("\n");
         }
-        
+
         return str.toString();
     }
 
     @Override
     public String visitClassStmt(Stmt.Class stmt) {
         var str = new StringBuilder();
-        
+
         str.append("class ");
         str.append(stmt.name.lexeme);
         str.append(" {\n");
 
-        for (Stmt method: stmt.methods){
+        for (Stmt method : stmt.methods) {
             str.append(indent(method.accept(this)));
         }
         str.append("}\n");
@@ -250,14 +247,26 @@ class AstPrinter implements Expr.Visitor<String>, Stmt.Visitor<String> {
 
     @Override
     public String visitSetExpr(Expr.Set expr) {
-        // TODO Auto-generated method stub
-        return null;
+        var str = new StringBuilder();
+        
+        // str.append(expr.object.accept(this));
+        // str.append(".");
+        str.append(expr.name.lexeme);
+        str.append(" = ");
+        str.append(expr.value.accept(this));
+        
+        return str.toString();
     }
 
     @Override
     public String visitGetExpr(Expr.Get expr) {
-        // TODO Auto-generated method stub
-        return null;
+        return expr.name.lexeme;
+        
+    }
+
+    @Override
+    public String visitThisExpr(Expr.This expr) {
+        return "this";
     }
 
 }

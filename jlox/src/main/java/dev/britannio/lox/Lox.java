@@ -73,7 +73,7 @@ public class Lox {
         // Parse tokens into a tree.
         var parser = new Parser(tokens);
         List<Stmt> statements = parser.parse();
-        // System.out.println(new AstPrinter().print(statements));
+        System.out.println(new AstPrinter().print(statements));
 
         // Stop if a syntax error was encountered.
         if (hadError)
