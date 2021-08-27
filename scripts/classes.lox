@@ -10,10 +10,25 @@ class Bacon {
   eat() {
     print "Crunch crunch crunch!";
   }
-
 }
 
 var bacon = Bacon();
 bacon.eat();
+
+bacon.isCrunchy = false;
+
+print "Bacon crunchy: "  + bacon.isCrunchy;
+
+
+class Cake {
+  taste() {
+    var adjective = "delicious";
+    print "The " + this.flavor + " cake is " + adjective + "!";
+  }
+}
+
+var cake = Cake();
+cake.flavor = "German chocolate";
+cake.taste();
 
 

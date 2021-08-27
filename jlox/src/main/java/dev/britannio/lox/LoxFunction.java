@@ -13,12 +13,26 @@ public class LoxFunction implements LoxCallable {
         this.closure = closure;
     }
 
+    /**
+     * Creates an environment holding {@code instance} as 'this' and attaches
+     * it to a copy of this function.
+     */
+    LoxFunction bind(LoxInstance instance) {
+        Environment environment = new Environment(closure);
+        environment.define("this", instance);
+        return new LoxFunction(declaration, environment);
+    }
+
 
     @Override
     public int arity() {
         return declaration.params.size();
     }
-
+    
+    /**
+     * Creates an environment for the function then populates it with the
+     * arguments of the function call before executing the function body.
+     */
     @Override
     public Object call(Interpreter interpreter, List<Object> arguments) {
         Environment environment = new Environment(closure);

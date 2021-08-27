@@ -24,7 +24,7 @@ public class LoxInstance {
 
         // A field wasn't found so look for a method
         LoxFunction method = klass.findMethod(name.lexeme);
-        if (method != null) return method;
+        if (method != null) return method.bind(this);
 
         // name isnt a method or field for this class.
         throw new RuntimeError(name, "Undefined property '" + name.lexeme + "'.");

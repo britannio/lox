@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Stack;
 
+
 /**
  * Assigns variables a fixed depth.
  */
@@ -40,11 +41,16 @@ public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
         // In case a class is declared as a local variable
         declare(stmt.name);
         define(stmt.name);
+        
+        beginScope();
+        scopes.peek().put("this", true);
 
         for (Stmt.Function method : stmt.methods) {
             FunctionType declaration = FunctionType.METHOD;
             resolveFunction(method, declaration);
         }
+
+        endScope();
 
         return null;
     }
@@ -132,6 +138,13 @@ public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
         return null;
     }
 
+    
+    @Override
+    public Void visitThisExpr(Expr.This expr) {
+        resolveLocal(expr, expr.keyword);
+        return null;
+    }
+    
     @Override
     public Void visitUnaryExpr(Expr.Unary expr) {
         resolve(expr.right);
@@ -248,5 +261,6 @@ public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
         resolve(expr.object);
         return null;
     }
+
 
 }

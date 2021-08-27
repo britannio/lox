@@ -34,7 +34,7 @@ factor         → unary ( ( "/" | "*" ) unary )*
 unary          → ( "!" | "-" ) unary | call 
 call           → primary ( "(" arguments? ")" | "." IDENTIFIER )*
 arguments      → expression ( "," expression )*
-primary        → NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")" | IDENTIFIER 
+primary        → NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")" | IDENTIFIER | this
 */
 
 /**
@@ -552,6 +552,9 @@ class Parser {
         return expr;
     }
 
+    /**
+     * BNF: NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")" | IDENTIFIER | this
+     */
     private Expr primary() {
         if (match(FALSE))
             return new Expr.Literal(false);
@@ -563,6 +566,8 @@ class Parser {
         if (match(NUMBER, STRING)) {
             return new Expr.Literal(previous().literal);
         }
+
+        if (match(THIS)) return new Expr.This(previous());
 
         if (match(IDENTIFIER)) {
             return new Expr.Variable(previous());
