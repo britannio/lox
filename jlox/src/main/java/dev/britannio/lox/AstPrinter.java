@@ -3,6 +3,7 @@ package dev.britannio.lox;
 import java.util.Arrays;
 import java.util.List;
 
+
 class AstPrinter implements Expr.Visitor<String>, Stmt.Visitor<String> {
 
 
@@ -229,6 +230,34 @@ class AstPrinter implements Expr.Visitor<String>, Stmt.Visitor<String> {
         }
         
         return str.toString();
+    }
+
+    @Override
+    public String visitClassStmt(Stmt.Class stmt) {
+        var str = new StringBuilder();
+        
+        str.append("class ");
+        str.append(stmt.name.lexeme);
+        str.append(" {\n");
+
+        for (Stmt method: stmt.methods){
+            str.append(indent(method.accept(this)));
+        }
+        str.append("}\n");
+
+        return str.toString();
+    }
+
+    @Override
+    public String visitSetExpr(Expr.Set expr) {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public String visitGetExpr(Expr.Get expr) {
+        // TODO Auto-generated method stub
+        return null;
     }
 
 }

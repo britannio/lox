@@ -33,24 +33,29 @@ public class GenerateAst {
         }
         String outputDir = args[0];
 
+        // Expressions evaluate to a value
         defineAst(outputDir, "Expr", Arrays.asList( //
                 "Literal  : Object value", //
                 "Logical  : Expr left, Token operator, Expr right", //
+                "Set      : Expr object, Token name, Expr value",
                 "Unary    : Token operator, Expr right", //
                 "Binary   : Expr left, Token operator, Expr right", //
+                "Get      : Expr object, Token name", //
                 "Call     : Expr callee, Token paren, List<Expr> arguments", //
                 "Grouping : Expr expression", //
                 "Variable : Token name", //
                 "Assign   : Token name, Expr value"//
         ), Arrays.asList("import java.util.List;"));
 
+        // Statements perform an action
         defineAst(outputDir, "Stmt", Arrays.asList( //
                 "Expression : Expr expression", //
                 "Function   : Token name, List<Token> params, List<Stmt> body", //
                 "If         : Expr condition, Stmt thenBranch, Stmt elseBranch", //
                 "Block      : List<Stmt> statements", //
+                "Class      : Token name, List<Stmt.Function> methods", //
                 "Print      : Expr expression", //
-                "Return     : Token keyword, Expr value",
+                "Return     : Token keyword, Expr value", //
                 "Var        : Token name, Expr initializer", //
                 "While      : Expr condition, Stmt body" //
         ), Arrays.asList("import java.util.List;"));
