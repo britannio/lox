@@ -10,7 +10,7 @@ import static dev.britannio.lox.TokenType.*;
 --------------------------------------------------------------
 program        → declaration* EOF 
 declaration    → classDecl | funcDecl | varDecl | statement
-classDecl      → "class" IDENTIFIER "{" function* "}"
+classDecl      → "class" IDENTIFIER ( "<" IDENTIFIER )? "{" function* "}"
 funDecl        → "fun" function
 function       → IDENTIFIER "(" parameters? ")" block
 parameters     → IDENTIFIER ( "," IDENTIFIER )*
@@ -109,10 +109,17 @@ class Parser {
     }
 
     /**
-     * BNF: "class" IDENTIFIER "{" function* "}"
+     * BNF: "class" IDENTIFIER ( "<" IDENTIFIER )? "{" function* "}"
      */
     private Stmt classDeclaration() {
         Token name = consume(IDENTIFIER, "Expect class name.");
+
+        Expr.Variable superclass = null;
+        if (match(LESS)) {
+            consume(IDENTIFIER, "Expect superclass name.");
+            superclass = new Expr.Variable(previous());
+        }
+
         consume(LEFT_BRACE, "Expect '{' before class body");
 
         List<Stmt.Function> methods = new ArrayList<>();
@@ -124,7 +131,7 @@ class Parser {
 
         consume(RIGHT_BRACE, "Expect '}' after class body.");
 
-        return new Stmt.Class(name, methods);
+        return new Stmt.Class(name, superclass, methods);
     }
 
     /**
@@ -553,7 +560,8 @@ class Parser {
     }
 
     /**
-     * BNF: NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")" | IDENTIFIER | this
+     * BNF: NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")" |
+     * IDENTIFIER | this
      */
     private Expr primary() {
         if (match(FALSE))
@@ -567,7 +575,8 @@ class Parser {
             return new Expr.Literal(previous().literal);
         }
 
-        if (match(THIS)) return new Expr.This(previous());
+        if (match(THIS))
+            return new Expr.This(previous());
 
         if (match(IDENTIFIER)) {
             return new Expr.Variable(previous());
