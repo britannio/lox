@@ -46,7 +46,8 @@ class AstPrinter implements Expr.Visitor<String>, Stmt.Visitor<String> {
     public String visitLiteralExpr(Expr.Literal expr) {
         if (expr.value == null)
             return "nil";
-            if (expr.value instanceof String) return "\"" + expr.value + "\"" ;
+        if (expr.value instanceof String)
+            return "\"" + expr.value + "\"";
         return expr.value.toString();
     }
 
@@ -248,25 +249,30 @@ class AstPrinter implements Expr.Visitor<String>, Stmt.Visitor<String> {
     @Override
     public String visitSetExpr(Expr.Set expr) {
         var str = new StringBuilder();
-        
+
         // str.append(expr.object.accept(this));
         // str.append(".");
         str.append(expr.name.lexeme);
         str.append(" = ");
         str.append(expr.value.accept(this));
-        
+
         return str.toString();
     }
 
     @Override
     public String visitGetExpr(Expr.Get expr) {
         return expr.name.lexeme;
-        
+
     }
 
     @Override
     public String visitThisExpr(Expr.This expr) {
         return "this";
+    }
+
+    @Override
+    public String visitSuperExpr(Expr.Super expr) {
+        return "";
     }
 
 }

@@ -34,7 +34,7 @@ factor         → unary ( ( "/" | "*" ) unary )*
 unary          → ( "!" | "-" ) unary | call 
 call           → primary ( "(" arguments? ")" | "." IDENTIFIER )*
 arguments      → expression ( "," expression )*
-primary        → NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")" | IDENTIFIER | this
+primary        → "true" | "false" | "nil" | "this" | NUMBER | STRING | IDENTIFIER | "(" expression ")" | "super" "." IDENTIFIER
 */
 
 /**
@@ -560,8 +560,8 @@ class Parser {
     }
 
     /**
-     * BNF: NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")" |
-     * IDENTIFIER | this
+     * BNF: "true" | "false" | "nil" | "this" | NUMBER | STRING | IDENTIFIER | "("
+     * expression ")" | "super" "." IDENTIFIER
      */
     private Expr primary() {
         if (match(FALSE))
@@ -573,6 +573,13 @@ class Parser {
 
         if (match(NUMBER, STRING)) {
             return new Expr.Literal(previous().literal);
+        }
+
+        if (match(SUPER)) {
+            Token keyword = previous();
+            consume(DOT, "Expect '.' after 'super'.");
+            Token method = consume(IDENTIFIER, "Expect superclass method name.");
+            return new Expr.Super(keyword, method);
         }
 
         if (match(THIS))

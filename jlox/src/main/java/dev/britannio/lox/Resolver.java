@@ -61,9 +61,13 @@ public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
             resolve(stmt.superclass);
         }
 
+        if (stmt.superclass != null) {
+            beginScope();
+            scopes.peek().put("super", true);
+        }
+
         beginScope();
         scopes.peek().put("this", true);
-
         for (Stmt.Function method : stmt.methods) {
             FunctionType declaration = FunctionType.METHOD;
             if (method.name.lexeme.equals("init")) {
@@ -73,6 +77,9 @@ public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
         }
 
         endScope();
+
+        if (stmt.superclass != null)
+            endScope();
 
         // Reset current class
         currentClass = enclosingClass;
@@ -101,8 +108,7 @@ public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     @Override
     public Void visitVarStmt(Stmt.Var stmt) {
         // Variable binding ins split into declaring then defining. This handles
-        // edge cases like local variable initialisers referring to global
-        // variables.
+        // edge cases like var a = a;
         declare(stmt.name);
         if (stmt.initializer != null) {
             resolve(stmt.initializer);
@@ -160,6 +166,12 @@ public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     public Void visitSetExpr(Expr.Set expr) {
         resolve(expr.value);
         resolve(expr.object);
+        return null;
+    }
+
+    @Override
+    public Void visitSuperExpr(Expr.Super expr) {
+        resolveLocal(expr, expr.keyword);
         return null;
     }
 
