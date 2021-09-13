@@ -92,6 +92,11 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
         throw new RuntimeError(operator, "Operand must be a number.");
     }
 
+    /**
+     * Verifies that {@code left} and {@code right} are numbers.
+     * 
+     * Throws a RuntimeError if the above statement is false.
+     */
     private void checkNumberOperands(Token operator, Object left, Object right) {
         if (left instanceof Double && right instanceof Double)
             return;
@@ -144,7 +149,12 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
                 }
 
                 throw new RuntimeError(expr.operator, "Operands must be two numbers or two strings.");
-
+            case SHIFT_LEFT:
+                checkNumberOperands(expr.operator, left, right);
+                return ((int) (double) left) << ((int) (double) right);
+            case SHIFT_RIGHT:
+                checkNumberOperands(expr.operator, left, right);
+                return ((int) (double) left) >> ((int) (double) right);
             default:
         }
 
