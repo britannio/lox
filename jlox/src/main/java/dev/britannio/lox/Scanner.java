@@ -78,11 +78,18 @@ public class Scanner {
       case ';' -> addToken(SEMICOLON);
       case '*' -> addToken(STAR);
       case '"' -> string();
-      // Matches 1-2 characters.
+      // Matches 1-3 characters.
       case '!' -> addToken(match('=') ? BANG_EQUAL : BANG);
       case '=' -> addToken(match('=') ? EQUAL_EQUAL : EQUAL);
       case '<' -> addToken(match('=') ? LESS_EQUAL : match('<') ? SHIFT_LEFT : LESS);
-      case '>' -> addToken(match('=') ? GREATER_EQUAL : match('>') ? SHIFT_RIGHT : GREATER);
+      case '>' -> addToken(match('=') //
+          ? GREATER_EQUAL //
+          : match('>') //
+              ? match('>') //
+                  ? TRIPLE_SHIFT //
+                  : SHIFT_RIGHT//
+              : GREATER //
+        );
       // Matches single line comments or division.
       case '/' -> {
         if (match('/')) {

@@ -29,7 +29,7 @@ logic_or       → logic_and ( "or" logic_and )*
 logic_and      → equality ( "and" equality )*
 equality       → comparison ( ( "!=" | "==" ) comparison )* 
 comparison     → shift ( ( ">" | ">=" | "<" | "<=" ) shift )* 
-shift          → term ( ( ">>" | "<<" ) term )*
+shift          → term ( ( ">>" | "<<" | ">>>" ) term )*
 term           → factor ( ( "-" | "+" ) factor )* 
 factor         → unary ( ( "/" | "*" ) unary )* 
 unary          → ( "!" | "-" ) unary | call 
@@ -492,7 +492,7 @@ class Parser {
     private Expr shift() {
         Expr expr = term();
 
-        while (match(SHIFT_LEFT, SHIFT_RIGHT)) {
+        while (match(SHIFT_LEFT, SHIFT_RIGHT, TRIPLE_SHIFT)) {
             Token operator = previous();
             Expr right = term();
             expr = new Expr.Binary(expr, operator, right);

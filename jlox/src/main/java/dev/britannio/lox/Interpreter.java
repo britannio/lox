@@ -155,6 +155,9 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
             case SHIFT_RIGHT:
                 checkNumberOperands(expr.operator, left, right);
                 return ((int) (double) left) >> ((int) (double) right);
+            case TRIPLE_SHIFT:
+                checkNumberOperands(expr.operator, left, right);
+                return ((int) (double) left) >>> ((int) (double) right);
             default:
         }
 

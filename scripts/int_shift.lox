@@ -3,3 +3,4 @@ print 2.5 << 3; // 16 (2.5 is converted to 2)
 
 print 64 >> 1; // 32
 
+print 64 >>> 1; // 32
