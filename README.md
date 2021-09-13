@@ -225,3 +225,25 @@ var britannio = Person("Britannio");
 britannio.nameSuffix = ":)";
 britannio.greet(); // prints "My name is Britannio :)"
 ```
+
+## 10 - Inheritance
+
+Classes can inherit from super classes!
+
+
+```java
+class Keyboard {
+  type() {
+    print "Keyboard noises";
+   }
+}
+
+class MechanicalKeyboard < Keyboard {
+  type() {
+    // super.type();
+    print "Loud mechanical keyboard noises :)";
+   }
+}
+
+MechanicalKeyboard().type(); // Loud mechanical keyboard noises :)
+```
