@@ -28,7 +28,8 @@ assignment     → ( call "." )? IDENTIFIER "=" assignment | logic_or
 logic_or       → logic_and ( "or" logic_and )*
 logic_and      → equality ( "and" equality )*
 equality       → comparison ( ( "!=" | "==" ) comparison )* 
-comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )* 
+comparison     → shift ( ( ">" | ">=" | "<" | "<=" ) shift )* 
+shift          → term ( ( ">>" | "<<" ) term )*
 term           → factor ( ( "-" | "+" ) factor )* 
 factor         → unary ( ( "/" | "*" ) unary )* 
 unary          → ( "!" | "-" ) unary | call 
@@ -452,12 +453,12 @@ class Parser {
     }
 
     /**
-     * BNF: term ( ( ">" | ">=" | "<" | "<=" ) term )*
+     * BNF: shift ( ( ">" | ">=" | "<" | "<=" ) shift )*
      * 
      * @return
      */
     private Expr comparison() {
-        Expr expr = term();
+        Expr expr = shift();
 
         while (match(GREATER, GREATER_EQUAL, LESS, LESS_EQUAL)) {
             Token operator = previous();
@@ -479,6 +480,21 @@ class Parser {
         while (match(MINUS, PLUS)) {
             Token operator = previous();
             Expr right = factor();
+            expr = new Expr.Binary(expr, operator, right);
+        }
+
+        return expr;
+    }
+
+    /**
+     * BNF: term ( ( ">>" | "<<" ) term )*
+     */
+    private Expr shift() {
+        Expr expr = term();
+
+        while (match(SHIFT_LEFT, SHIFT_RIGHT)) {
+            Token operator = previous();
+            Expr right = term();
             expr = new Expr.Binary(expr, operator, right);
         }
 
