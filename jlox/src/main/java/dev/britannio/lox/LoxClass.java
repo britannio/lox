@@ -40,8 +40,7 @@ public class LoxClass implements LoxCallable {
     public int arity() {
         LoxFunction initializer = findMethod("init");
         // No init method was defined.
-        if (initializer == null)
-            return 0;
+        if (initializer == null) return 0;
         return initializer.arity();
     }
 

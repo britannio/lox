@@ -113,7 +113,7 @@ public class Scanner {
         } else if (isAlpha(c)) {
           identifier();
         } else {
-          Lox.error(line, String.format("Unexpected character (%c) at column %d", c, column));
+          Lox.error(line, "Unexpected character.");
         }
       }
     }

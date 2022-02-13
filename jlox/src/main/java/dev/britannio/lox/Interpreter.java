@@ -100,7 +100,7 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     private void checkNumberOperands(Token operator, Object left, Object right) {
         if (left instanceof Double && right instanceof Double)
             return;
-        throw new RuntimeError(operator, "Operands must be a numbers.");
+        throw new RuntimeError(operator, "Operands must be numbers.");
     }
 
     @Override
@@ -135,7 +135,6 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
                 checkNumberOperands(expr.operator, left, right);
                 return (double) left - (double) right;
             case PLUS:
-
                 if (left instanceof Double && right instanceof Double) {
                     return (double) left + (double) right;
                 }
@@ -144,9 +143,9 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
                     return (String) left + (String) right;
                 }
 
-                if (left instanceof String || right instanceof String) {
-                    return stringify(left) + stringify(right);
-                }
+                // if (left instanceof String || right instanceof String) {
+                    // return stringify(left) + stringify(right);
+                // }
 
                 throw new RuntimeError(expr.operator, "Operands must be two numbers or two strings.");
             case SHIFT_LEFT:
@@ -189,8 +188,7 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     }
 
     private String stringify(Object object) {
-        if (object == null)
-            return "nil";
+        if (object == null) return "nil";
 
         if (object instanceof Double) {
             var text = object.toString();
@@ -437,7 +435,7 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
 
         // The callee must be a callable function/class
         if (!(callee instanceof LoxCallable)) {
-            throw new RuntimeError(expr.paren, "Can only call functions and classes");
+            throw new RuntimeError(expr.paren, "Can only call functions and classes.");
         }
 
         LoxCallable function = (LoxCallable) callee;
@@ -445,7 +443,7 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
         // Ensure that the correct number of arguments are provided
         if (arguments.size() != function.arity()) {
             throw new RuntimeError(expr.paren,
-                    String.format("Expected %d arguments but got %d arguments.", arguments.size(), function.arity()));
+                    String.format("Expected %d arguments but got %d.", function.arity(), arguments.size()));
         }
 
         return function.call(this, arguments);

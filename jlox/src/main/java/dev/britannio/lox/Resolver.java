@@ -176,7 +176,7 @@ public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
         if (currentClass == ClassType.NONE) {
             Lox.error(expr.keyword, "Can't use 'super' outside of a class.");
         } else if (currentClass != ClassType.SUBCLASS) {
-            Lox.error(expr.keyword, "Can't use 'super' in a class with no superclass");
+            Lox.error(expr.keyword, "Can't use 'super' in a class with no superclass.");
         }
         
         resolveLocal(expr, expr.keyword);
@@ -202,7 +202,7 @@ public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     @Override
     public Void visitVariableExpr(Expr.Variable expr) {
         if (!scopes.isEmpty() && scopes.peek().get(expr.name.lexeme) == Boolean.FALSE) {
-            Lox.error(expr.name, "Can't read local variable in its own initializer");
+            Lox.error(expr.name, "Can't read local variable in its own initializer.");
         }
 
         resolveLocal(expr, expr.name);

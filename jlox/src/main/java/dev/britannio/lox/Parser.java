@@ -190,7 +190,7 @@ class Parser {
             increment = expression();
         }
 
-        consume(RIGHT_PAREN, "Expect ')' after for clauses");
+        consume(RIGHT_PAREN, "Expect ')' after for clauses.");
         Stmt body = statement();
 
         // Now desugar the for loop into a while loop:
@@ -319,7 +319,8 @@ class Parser {
      */
     private Stmt expressionStatement() {
         Expr expr = expression();
-        match(SEMICOLON);
+        // match(SEMICOLON);
+        consume(SEMICOLON, "Expect ';' after expression.");
         return new Stmt.Expression(expr);
     }
 

@@ -66,7 +66,7 @@ public class Environment {
         if (enclosing != null)
             return enclosing.get(name);
 
-        throw new RuntimeError(name, String.format("Cannot reference an undefined variable '%s'.", name.lexeme));
+        throw new RuntimeError(name, String.format("Undefined variable '%s'.", name.lexeme));
     }
 
     /**
@@ -87,8 +87,7 @@ public class Environment {
             return;
         }
 
-        throw new RuntimeError(name,
-                String.format("Cannot assign a value to an undefined variable '%s'.", name.lexeme));
+        throw new RuntimeError(name, String.format("Undefined variable '%s'.", name.lexeme));
     }
 
 }
