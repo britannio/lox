@@ -45,7 +45,8 @@
           <version>3.8.0</version>
           <configuration>
             <fork>true</fork>
-            <executable>/usr/lib/jvm/java-16-openjdk-amd64/bin/javac</executable>
+<!--            <executable>/usr/lib/jvm/java-16-openjdk-amd64/bin/javac</executable>-->
+              <executable>/usr/bin/javac</executable>
           </configuration>
         </plugin>
         <plugin>

@@ -30,6 +30,7 @@ public class Scanner {
   private static final Map<String, TokenType> keywords;
 
   static {
+    // Initialised when the class is loaded into memory.
     keywords = new HashMap<>();
     keywords.put("and", AND);
     keywords.put("class", CLASS);
@@ -112,7 +113,6 @@ public class Scanner {
         } else if (isAlpha(c)) {
           identifier();
         } else {
-
           Lox.error(line, String.format("Unexpected character (%c) at column %d", c, column));
         }
       }
@@ -183,24 +183,20 @@ public class Scanner {
 
   private boolean match(char expected) {
     // There is no character at `current`.
-    if (isAtEnd())
-      return false;
+    if (isAtEnd()) return false;
     // The current character is not the one we're looking for.
-    if (source.charAt(current) != expected)
-      return false;
-
+    if (source.charAt(current) != expected) return false;
     current++;
     return true;
   }
 
   /**
    * @return the current character without advancing the scanner to the next
-   *         character.
+   * character.
    */
   private char peek() {
     // \0 is the null character.
-    if (isAtEnd())
-      return '\0';
+    if (isAtEnd()) return '\0';
     return source.charAt(current);
   }
 
