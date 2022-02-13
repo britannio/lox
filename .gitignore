@@ -1,1 +1,2 @@
-jlox/target/**
+jlox/target/
+clox/cmake-build-debug/
