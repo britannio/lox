@@ -23,9 +23,10 @@ cd jlox/
 mvn clean compile
 ./bin/run.sh <script-name|optional>
 ```
+# Progress
 
-
-# Progress Log (Jlox)
+<details>
+  <summary><b>Jlox Progress Log</b></summary>
 
 ## 1 - Scanning
 
@@ -247,3 +248,21 @@ class MechanicalKeyboard < Keyboard {
 
 MechanicalKeyboard().type(); // Loud mechanical keyboard noises :)
 ```
+  
+</details>
+
+
+<details>
+  <summary><b>Clox Progress Log</b></summary>
+
+## 1 - Chunks of Bytecode
+
+A chunk containing bytecode instructions can be created.
+
+```
+== test chunk ==
+0000  123 OP_CONSTANT         0 '1.2'
+0002    | OP_RETURN
+```
+  
+</details>
