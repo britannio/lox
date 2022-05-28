@@ -14,14 +14,26 @@ void disassembleChunk(Chunk *chunk, const char *name) {
 static int constantInstruction(const char *name, Chunk *chunk, int offset) {
     // The next item in the chunk's code array is the index of the constant in the chunk's constants array
     uint8_t constant = chunk->code[offset + 1];
-    printf("%-16s %4d '", name, constant);
+    printf("%-16s %9d '", name, constant);
     // Printing the index of the constant in the chunk alone isn't useful.
     // Here, we also print the value itself.
     printValue(chunk->constants.values[constant]);
     printf("'\n");
-    // The beginning of the next instruction
+    // The beginning of the next instruction.
     return offset + 2;
 
+}
+
+static int constantInstructionLong(const char *name, Chunk *chunk, int offset) {
+    // The next item in the chunk's code array is the index of the constant in the chunk's constants array
+    uint32_t constant = (chunk->code[offset + 1] << 16) + (chunk->code[offset + 2] << 8) + (chunk->code[offset + 3]);
+    printf("%-16s %9d '", name, constant);
+    // Printing the index of the constant in the chunk alone isn't useful.
+    // Here, we also print the value itself.
+    printValue(chunk->constants.values[constant]);
+    printf("'\n");
+    // The beginning of the next instruction.
+    return offset + 4;
 }
 
 static int simpleInstruction(const char *name, int offset) {
@@ -30,8 +42,10 @@ static int simpleInstruction(const char *name, int offset) {
 }
 
 int disassembleInstruction(Chunk *chunk, int offset) {
-    // The offset of the instruction within the chunk code array
+    // Print the offset of the instruction within the chunk code array
     printf("%04d ", offset);
+
+    // Print the line number
     if (offset > 0 && chunk->lines[offset] == chunk->lines[offset - 1]) {
         // The previous instruction was on the same source line.
         printf("   | ");
@@ -45,6 +59,8 @@ int disassembleInstruction(Chunk *chunk, int offset) {
             return simpleInstruction("OP_RETURN", offset);
         case OP_CONSTANT:
             return constantInstruction("OP_CONSTANT", chunk, offset);
+        case OP_CONSTANT_LONG:
+            return constantInstructionLong("OP_CONSTANT_LONG", chunk, offset);
         default:
             printf("Unknown opcode %d\n", instruction);
             return offset + 1;

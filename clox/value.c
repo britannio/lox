@@ -1,5 +1,4 @@
 #include <stdio.h>
-
 #include "value.h"
 #include "memory.h"
 
@@ -31,5 +30,3 @@ void freeValueArray(ValueArray *array) {
 void printValue(Value value) {
     printf("%g", value);
 }
-
-// I left off at constant-instructions
