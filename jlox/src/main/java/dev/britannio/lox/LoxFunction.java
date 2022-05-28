@@ -2,8 +2,6 @@ package dev.britannio.lox;
 
 import java.util.List;
 
-import dev.britannio.lox.Stmt.Function;
-
 public class LoxFunction implements LoxCallable {
     private final Stmt.Function declaration;
     private final Environment closure;

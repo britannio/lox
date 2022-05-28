@@ -22,7 +22,6 @@ public class Scanner {
   private int current = 0;
 
   private int line = 1;
-  private int column = 0;
 
   /**
    * Reserved keywords in Lox.
@@ -178,7 +177,6 @@ public class Scanner {
 
   private void advanceLine() {
     line++;
-    column = 0;
   }
 
   private boolean match(char expected) {
@@ -227,7 +225,6 @@ public class Scanner {
 
   private char advance() {
     // gets the character at current then increments current.
-    column++;
     return source.charAt(current++);
   }
 

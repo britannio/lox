@@ -14,6 +14,7 @@ public class Lox {
     static boolean hadRuntimeError = false;
 
     public static void main(String[] args) throws IOException {
+
         if (args.length > 1) {
             System.out.println("Usage: jlox [script]");
             System.exit(64);
@@ -76,9 +77,8 @@ public class Lox {
         // System.out.println(new AstPrinter().print(statements));
 
         // Stop if a syntax error was encountered.
-        if (hadError)
-            return;
-        
+        if (hadError) return;
+
         Resolver resolver = new Resolver(interpreter);
         resolver.resolve(statements);
         // Stop if a resolution error was encountered
