@@ -5,4 +5,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+// Disassemble and print each instruction before execution
+#define DEBUG_TRACE_EXECUTION
+
 #endif

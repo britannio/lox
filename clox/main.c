@@ -12,16 +12,20 @@ int main(int argc, const char *argv[]) {
     initChunk(&chunk);
 
     // Indexes in the constant pool
-    int constant = addConstant(&chunk, 1.2);
-    for (int i = 0; i < 255; i++) addConstant(&chunk, i);
-
+//    int constant = addConstant(&chunk, 1.2);
     // The chunk array looks like [OP_CONSTANT, 0] where 0 is the index of the constant in question
-    writeChunk(&chunk, OP_CONSTANT, 123);
-    writeChunk(&chunk, constant, 123);
-    writeConstant(&chunk, 32, 124);
-    writeChunk(&chunk, OP_RETURN, 126);
+    writeConstant(&chunk, 1.2, 123);
+    writeConstant(&chunk, 3.4, 123);
 
-    disassembleChunk(&chunk, "test chunk");
+    writeChunk(&chunk, OP_ADD, 123);
+    writeConstant(&chunk, 5.6, 123);
+
+    writeChunk(&chunk, OP_DIVIDE, 123);
+    writeChunk(&chunk, OP_NEGATE, 123);
+
+    writeChunk(&chunk, OP_RETURN, 123);
+
+//    disassembleChunk(&chunk, "test chunk");
     interpret(&chunk);
     freeVM();
     freeChunk(&chunk);
