@@ -5,6 +5,7 @@
 
 
 void initChunk(Chunk *chunk) {
+    // Recall that local variables in C are uninitialised by default.
     chunk->count = 0;
     chunk->capacity = 0;
     chunk->code = NULL;

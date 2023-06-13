@@ -8,7 +8,7 @@ void *reallocate(void *pointer, size_t oldSize, size_t newSize) {
     }
 
     void *result = realloc(pointer, newSize);
-    // Out of memory
+    // Out of memory, exit here rather than letting the program run loose and crash elsewhere.
     if (result == NULL) exit(1);
     return result;
 }

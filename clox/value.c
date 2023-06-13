@@ -8,7 +8,7 @@ void initValueArray(ValueArray *array) {
     array->values = NULL;
 }
 
-// Add {value} to {array}
+// Append {value} to {array}
 void writeValueArray(ValueArray *array, Value value) {
     // Resize the array if it is full/uninitialised
     if (array->capacity < array->count + 1) {

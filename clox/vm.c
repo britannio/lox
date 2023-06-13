@@ -23,7 +23,7 @@ static InterpretResult run() {
 #define READ_BYTE() (*vm.ip++)
 #define READ_CONSTANT() (vm.chunk->constants.values[READ_BYTE()])
 #define READ_CONSTANT_LONG() (vm.chunk->constants.values[(READ_BYTE() << 16) + (READ_BYTE() << 8) + READ_BYTE()])
-// The do block permits additional semicolons so BINARY_OP(+); compiles
+// The do block permits additional semicolons when the macro is used so BINARY_OP(+); compiles.
 #define BINARY_OP(op) \
     do {              \
         double b = pop(); \
@@ -69,7 +69,9 @@ static InterpretResult run() {
                 break;
                 // Get the value on the stack, negate it and return it to the stack.
             case OP_NEGATE:
-                push(-pop());
+                // Optimisation (without benchmark) to update the stack top in place
+                *(vm.stackTop - 1) = -*(vm.stackTop - 1);
+//                push(-pop());
                 break;
             case OP_RETURN:
                 printValue(pop());

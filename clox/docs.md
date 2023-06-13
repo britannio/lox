@@ -1,11 +1,9 @@
 # Development Notes
 
-* Chunk = sequence of bytecode
-
 ## C notes
 
 `void functionName(const char *name)`
-Here, the `char` array pointer cannot be de-referenced to change its value
+Here, the `char` array pointer cannot be de-referenced to change its value as it is const.
 
 
 ## Clox pieces
