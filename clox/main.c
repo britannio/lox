@@ -1,63 +1,89 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include "common.h"
 #include "chunk.h"
 #include "debug.h"
 #include "vm.h"
 
+static void repl() {
+    // TODO: What does static do?
+    char line[1024];
+    // REPL = Read-Eval-Print-Loop
+    // Here is the loop
+    for (;;) {
+        printf("> ");
 
-void vmChallenge1(Chunk *chunk) {
-//    writeConstant(chunk, 3, 123);
-//    writeConstant(chunk, 2, 123);
-//    writeChunk(chunk, OP_SUBTRACT, 123);
-//    writeConstant(chunk, 1, 123);
-//    writeChunk(chunk, OP_SUBTRACT, 123);
-//    writeChunk(chunk, OP_RETURN, 123);
+        if (!fgets(line, sizeof(line), stdin)) {
+            printf("/n");
+            break;
+        }
 
-
-    // 1 + 2 * 3 - 4 / -5
-    // 1 + (2 * 3) - (4 / (-5))
-    writeConstant(chunk, 2, 123);
-    writeConstant(chunk, 3, 123);
-    writeChunk(chunk, OP_MULTIPLY, 123);
-
-    writeConstant(chunk, 1, 123);
-    writeChunk(chunk, OP_ADD, 123);
-
-    writeConstant(chunk, 4, 123);
-    writeConstant(chunk, 5, 123);
-    writeChunk(chunk, OP_NEGATE, 123);
-    writeChunk(chunk, OP_DIVIDE, 123);
-
-    writeChunk(chunk, OP_SUBTRACT, 123);
-    writeChunk(chunk, OP_RETURN, 123);
+        interpret(line);
+    }
 
 }
 
+static char *readFile(const char *path) {
+    FILE *file = fopen(path, "rb");
+    if (file == NULL) {
+        // Exit if the file cannot be open (doesn't exist, insufficient perms etc)
+        fprintf(stderr, "Could not open file \"%s\".\n", path);
+        exit(74);
+    }
+
+    // To read a file, we need its size so enough memory can be allocated to store it.
+    // But knowing the size of a file requires it to be read.
+    // Fortunately, we can just 'seek' to the end of the file and use ftell() to get this info.
+    fseek(file, 0L, SEEK_END);
+    size_t fileSize = ftell(file);
+    rewind(file);
+
+    // Is that casting a pointer to a char pointer?
+    // What if malloc fails?
+    char *buffer = (char *) malloc(fileSize + 1);
+    if (buffer == NULL) {
+        // Not enough memory to store the file...
+        fprintf(stderr, "Not enough memory to read file \"%s\".\n", path);
+        exit(74);
+    }
+    size_t bytesRead = fread(buffer, sizeof(char), fileSize, file);
+    if (bytesRead < fileSize) {
+        // We failed to read the whole file.
+        fprintf(stderr, "Could not read file \"%s\".\n", path);
+        exit(74);
+    }
+    buffer[bytesRead] = '\0';
+
+    fclose(file);
+    return buffer;
+}
+
+static void runFile(const char *path) {
+    // Reads a file then executes the code inside it
+    char *source = readFile(path);
+    InterpretResult result = interpret(source);
+    free(source);
+
+    if (result == INTERPRET_COMPILE_ERROR) exit(65);
+    if (result == INTERPRET_RUNTIME_ERROR) exit(70);
+}
+
 int main(int argc, const char *argv[]) {
+    // argc is the number of arguments?
     initVM();
 
-    Chunk chunk;
-    initChunk(&chunk);
+    if (argc == 1) {
+        repl();
+    } else if (argc == 2) {
+        runFile(argv[1]);
+    } else {
+        fprintf(stderr, "Usage: clox [path]\n");
+        // 64?
+        exit(64);
+    }
 
-    // Indexes in the constant pool
-//    int constant = addConstant(&chunk, 1.2);
-    // The chunk array looks like [OP_CONSTANT, 0] where 0 is the index of the constant in question
-//    writeConstant(&chunk, 1.2, 123);
-//    writeConstant(&chunk, 3.4, 123);
-//
-//    writeChunk(&chunk, OP_ADD, 123);
-//    writeConstant(&chunk, 5.6, 123);
-//
-//    writeChunk(&chunk, OP_DIVIDE, 123);
-//    writeChunk(&chunk, OP_NEGATE, 123);
-//
-//    writeChunk(&chunk, OP_RETURN, 123);
 
-    vmChallenge1(&chunk);
-
-//    disassembleChunk(&chunk, "test chunk");
-    interpret(&chunk);
     freeVM();
-    freeChunk(&chunk);
     return 0;
 }
