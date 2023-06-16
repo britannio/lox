@@ -89,8 +89,25 @@ static InterpretResult run() {
 }
 
 InterpretResult interpret(const char* source) {
-    compile(source);
-    return INTERPRET_OK;
+    // Create a chunk to store our resulting bytecode
+    Chunk chunk;
+    initChunk(&chunk);
+
+    // Perform compilation, if successful, [chunk] will be populated with the corresponding bytecode.
+    if (!compile(source, &chunk)) {
+        freeChunk(&chunk);
+        return INTERPRET_COMPILE_ERROR;
+    }
+
+    // Update the virtual machine with our bytecode chunk
+    vm.chunk = &chunk;
+    vm.ip = vm.chunk->code;
+
+    // Execute the bytecode
+    InterpretResult result = run();
+
+    freeChunk(&chunk);
+    return result;
 }
 
 void push(Value value) {
