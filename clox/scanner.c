@@ -13,6 +13,7 @@ typedef struct {
 Scanner scanner;
 
 void initScanner(const char *source) {
+    // By initialising this way, de-referencing .start or .current gives you the first character of the source string.
     scanner.start = source;
     scanner.current = source;
     scanner.line = 1;
@@ -35,13 +36,14 @@ static bool isAtEnd() {
 // Returns the current character and moves to the next one
 static char advance() {
     scanner.current++;
-    // -1 just subtracts 1 from the pointer before dereferencing it
+    // -1 just subtracts 1 from the pointer before de-referencing it
     return scanner.current[-1];
 }
 
 // Returns the current character.
 static char peek() {
-    return *scanner.current;
+    return scanner.current[0];
+//    return *scanner.current;
 }
 
 // Returns the next character.

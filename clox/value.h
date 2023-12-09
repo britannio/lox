@@ -3,16 +3,44 @@
 
 #include "common.h"
 
-/* A Value is a double. We also have a ValueArray to manage an array of values.
- * Later on, a Value will represent a wider variety of types. */
+// Tagged unions are the pairing of a ValueType with a value itself.
+typedef enum {
+    VAL_BOOL,
+    VAL_NIL,
+    VAL_NUMBER,
+} ValueType;
 
-typedef double Value;
+// [type, value]
+typedef struct {
+    ValueType type;
+    // The struct makes space for the largest of these types.
+    union {
+        bool boolean;
+        double number;
+    } as;
+} Value;
+
+// Macros to check the type of a value
+#define IS_BOOL(value)    ((value).type == VAL_BOOL)
+#define IS_NIL(value)     ((value).type == VAL_NIL)
+#define IS_NUMBER(value)  ((value).type == VAL_NUMBER)
+
+// Macros to read a value
+#define AS_BOOL(value) ((value.as.boolean))
+#define AS_NUMBER(value) ((value.as.number))
+
+// Macros to produce a value
+#define BOOL_VAL(value)     ((Value){VAL_BOOL, {.boolean = value}})
+#define NIL_VAL             ((Value){VAL_NIL, {.number = 0}})
+#define NUMBER_VAL(value)   ((Value){VAL_NUMBER, {.number = value}})
 
 typedef struct {
     int capacity;
     int count;
     Value *values;
 } ValueArray;
+
+bool valuesEqual(Value a, Value b);
 
 void initValueArray(ValueArray *array);
 

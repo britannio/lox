@@ -7,14 +7,16 @@
 #include "vm.h"
 
 static void repl() {
-    // TODO: What does static do?
+    // Max number of characters to evaluate at once
     char line[1024];
     // REPL = Read-Eval-Print-Loop
     // Here is the loop
     for (;;) {
         printf("> ");
 
+        // fgets will read 1024 characters (we need space for the null character) and store it in {line}.
         if (!fgets(line, sizeof(line), stdin)) {
+            // We failed to read the line
             printf("/n");
             break;
         }
