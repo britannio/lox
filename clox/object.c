@@ -26,6 +26,8 @@ static ObjString *allocateString(char *chars, int length) {
     ObjString *string = (ObjString *) allocateObject(size, OBJ_STRING);
     string->length = length;
     strcpy(string->chars, chars);
+    // The old string is no longer needed
+    FREE_ARRAY(char, chars, length + 1);
     return string;
 }
 

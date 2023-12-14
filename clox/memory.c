@@ -20,8 +20,11 @@ static void freeObject(Obj* object) {
     switch (object->type) {
         case OBJ_STRING: {
             ObjString* string = (ObjString*)object;
-            FREE_ARRAY(char, string->chars, string->length + 1);
-            FREE(ObjString, object);
+//            FREE_ARRAY(char, string->chars, string->length + 1);
+            // sizeof(ObjString) doesn't take the length of the char array into account.
+            size_t stringObjectSize = sizeof(ObjString) + (string->length + 1) * sizeof(char);
+//            FREE(ObjString, object);
+            reallocate(object, stringObjectSize, 0);
             break;
         }
     }
