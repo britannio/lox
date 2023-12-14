@@ -1,20 +1,26 @@
+#include "vm.h"
+
 #include <stdarg.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "common.h"
 #include "compiler.h"
 #include "debug.h"
-#include "vm.h"
+#include "object.h"
+#include "memory.h"
 
 VM vm;
 
 static void resetStack() {
-    // The stack is defined statically inside the VM struct, so it need not be allocated/freed.
+    // The stack is defined statically inside the VM struct, so it need not be
+    // allocated/freed.
     vm.stackTop = vm.stack;
 }
 
 static void runtimeError(const char *format, ...) {
-    // This is a variadic function, one that can take a varying number of arguments.
+    // This is a variadic function, one that can take a varying number of
+    // arguments.
 
     va_list args;
     va_start(args, format);
@@ -23,45 +29,58 @@ static void runtimeError(const char *format, ...) {
     va_end(args);
     fputs("\n", stderr);
 
-    // -1 because we advance past instructions before executing them thus the failed instruction is the previous one.
+    // -1 because we advance past instructions before executing them thus the
+    // failed instruction is the previous one.
     size_t instruction = vm.ip - vm.chunk->code - 1;
     int line = vm.chunk->lines[instruction];
     fprintf(stderr, "[line %d] in script\n", line);
     resetStack();
 }
 
-
-static Value peek(int distance) {
-    return vm.stackTop[-1 - distance];
-}
+static Value peek(int distance) { return vm.stackTop[-1 - distance]; }
 
 static bool isFalsey(Value value) {
     // nil or false
     return IS_NIL(value) || (IS_BOOL(value) && !AS_BOOL(value));
 }
 
-void initVM() {
-    resetStack();
+static void concatenate() {
+    ObjString *b = AS_STRING(pop());
+    ObjString *a = AS_STRING(pop());
+
+    int length = a->length + b->length;
+    char *chars = ALLOCATE(char, length + 1);
+    memcpy(chars, a->chars, a->length);
+    memcpy(chars + a->length, b->chars, b->length);
+    chars[length] = '\0';
+
+    ObjString *result = takeString(chars, length);
+    push(OBJ_VAL(result));
 }
 
-void freeVM() {
+void initVM() { resetStack(); }
 
+void freeVM() {
+    freeObjects();
 }
 
 static InterpretResult run() {
 #define READ_BYTE() (*vm.ip++)
 #define READ_CONSTANT() (vm.chunk->constants.values[READ_BYTE()])
-#define READ_CONSTANT_LONG() (vm.chunk->constants.values[(READ_BYTE() << 16) + (READ_BYTE() << 8) + READ_BYTE()])
-// The do block permits additional semicolons when the macro is used so BINARY_OP(+); compiles.
-#define BINARY_OP(valueType, op) \
-    do {              \
+#define READ_CONSTANT_LONG() \
+    (vm.chunk->constants     \
+         .values[(READ_BYTE() << 16) + (READ_BYTE() << 8) + READ_BYTE()])
+// The do block permits additional semicolons when the macro is used so
+// BINARY_OP(+); compiles.
+#define BINARY_OP(valueType, op)                          \
+    do {                                                  \
         if (!IS_NUMBER(peek(0)) || !IS_NUMBER(peek(1))) { \
             runtimeError("Operands must be numbers.");    \
-            return INTERPRET_RUNTIME_ERROR;\
-        }\
-        double b = AS_NUMBER(pop()); \
-        double a = AS_NUMBER(pop()); \
-        push(valueType(a op b)); \
+            return INTERPRET_RUNTIME_ERROR;               \
+        }                                                 \
+        double b = AS_NUMBER(pop());                      \
+        double a = AS_NUMBER(pop());                      \
+        push(valueType(a op b));                          \
     } while (false)
 
     for (;;) {
@@ -74,7 +93,7 @@ static InterpretResult run() {
             printf(" ]");
         }
         printf("\n");
-        disassembleInstruction(vm.chunk, (int) (vm.ip - vm.chunk->code));
+        disassembleInstruction(vm.chunk, (int)(vm.ip - vm.chunk->code));
 #endif
         uint8_t instruction;
         switch (instruction = READ_BYTE()) {
@@ -110,7 +129,17 @@ static InterpretResult run() {
                 BINARY_OP(BOOL_VAL, <);
                 break;
             case OP_ADD:
-                BINARY_OP(NUMBER_VAL, +);
+                if (IS_STRING(peek(0)) && IS_STRING(peek(1))) {
+                    concatenate();
+                } else if (IS_NUMBER(peek(0)) && IS_NUMBER(peek(1))) {
+                    double b = AS_NUMBER(pop());
+                    double a = AS_NUMBER(pop());
+                    push(NUMBER_VAL(a + b));
+                    // BINARY_OP(NUMBER_VAL, +);
+                } else {
+                    runtimeError("Operands must be two numbers or two strings");
+                    return INTERPRET_RUNTIME_ERROR;
+                }
                 break;
             case OP_SUBTRACT:
                 BINARY_OP(NUMBER_VAL, -);
@@ -124,14 +153,16 @@ static InterpretResult run() {
             case OP_NOT:
                 push(BOOL_VAL(isFalsey(pop())));
                 break;
-                // Get the value on the stack, negate it and return it to the stack.
+                // Get the value on the stack, negate it and return it to the
+                // stack.
             case OP_NEGATE:
                 if (!IS_NUMBER(peek(0))) {
                     runtimeError("Operand must be a number.");
                     return INTERPRET_RUNTIME_ERROR;
                 }
                 push(NUMBER_VAL(-AS_NUMBER(pop())));
-                // Optimisation (without benchmark) to update the stack top in place
+                // Optimisation (without benchmark) to update the stack top in
+                // place
                 //  *(vm.stackTop - 1) = -*(vm.stackTop - 1);
                 break;
             case OP_RETURN:
@@ -140,7 +171,6 @@ static InterpretResult run() {
                 return INTERPRET_OK;
         }
     }
-
 
 #undef READ_BYTE
 #undef READ_CONSTANT
@@ -153,7 +183,8 @@ InterpretResult interpret(const char *source) {
     Chunk chunk;
     initChunk(&chunk);
 
-    // Perform compilation, if successful, [chunk] will be populated with the corresponding bytecode.
+    // Perform compilation, if successful, [chunk] will be populated with the
+    // corresponding bytecode.
     if (!compile(source, &chunk)) {
         freeChunk(&chunk);
         return INTERPRET_COMPILE_ERROR;

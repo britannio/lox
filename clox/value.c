@@ -1,5 +1,9 @@
-#include <stdio.h>
 #include "value.h"
+
+#include <stdio.h>
+#include <string.h>
+
+#include "object.h"
 #include "memory.h"
 
 void initValueArray(ValueArray *array) {
@@ -14,7 +18,8 @@ void writeValueArray(ValueArray *array, Value value) {
     if (array->capacity < array->count + 1) {
         int oldCapacity = array->capacity;
         array->capacity = GROW_CAPACITY(oldCapacity);
-        array->values = GROW_ARRAY(Value, array->values, oldCapacity, array->capacity);
+        array->values =
+            GROW_ARRAY(Value, array->values, oldCapacity, array->capacity);
     }
 
     // Set the value and increment the index of the next item
@@ -38,6 +43,9 @@ void printValue(Value value) {
         case VAL_NUMBER:
             printf("%g", AS_NUMBER(value));
             break;
+        case VAL_OBJ:
+            printObject(value);
+            break;
     }
 }
 
@@ -50,8 +58,13 @@ bool valuesEqual(Value a, Value b) {
             return true;
         case VAL_NUMBER:
             return AS_NUMBER(a) == AS_NUMBER(b);
+        case VAL_OBJ:{
+            ObjString* aString = AS_STRING(a);
+            ObjString* bString = AS_STRING(b);
+            return aString->length == bString->length &&
+                memcmp(aString->chars, bString -> length, aString->length) == 0;
+        }
         default:
             return false;
-
     }
 }

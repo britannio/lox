@@ -2,6 +2,13 @@
 #define clox_memory_h
 
 #include "common.h"
+#include "object.h"
+
+#define ALLOCATE(type, count) \
+    (type*)reallocate(NULL, 0, sizeof(type) * (count))
+
+
+#define FREE(type, pointer) reallocate(pointer, sizeof(type), 0);
 
 /* Growing by a factor of 2 (i.e., growing proportionally to size) is what gives us O(1) amortized performance when
  * adding elements to an array that may be full.
@@ -18,6 +25,7 @@
     reallocate(pointer, sizeof(type) * (oldCount), 0)
 
 void *reallocate(void *pointer, size_t oldSize, size_t newSize);
+void freeObjects();
 
 
 #endif
