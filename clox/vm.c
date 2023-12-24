@@ -58,7 +58,14 @@ static void concatenate() {
     push(OBJ_VAL(result));
 }
 
-void initVM() { resetStack(); }
+void initVM() {
+    resetStack();
+    // No allocated objects at the start.
+    // Objects are linked list nodes pointing to other objects.
+    // The end of the linked list chain should be null so we know when we've reached the
+    // last object.
+    vm.objects = NULL;
+}
 
 void freeVM() {
     freeObjects();
@@ -93,7 +100,7 @@ static InterpretResult run() {
             printf(" ]");
         }
         printf("\n");
-        disassembleInstruction(vm.chunk, (int)(vm.ip - vm.chunk->code));
+        disassembleInstruction(vm.chunk, (int) (vm.ip - vm.chunk->code));
 #endif
         uint8_t instruction;
         switch (instruction = READ_BYTE()) {
