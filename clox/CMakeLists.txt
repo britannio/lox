@@ -16,4 +16,5 @@ add_executable(clox
         compiler.c compiler.h
         scanner.c scanner.h
         object.h object.c
+        table.c table.h
 )

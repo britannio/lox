@@ -58,12 +58,8 @@ bool valuesEqual(Value a, Value b) {
             return true;
         case VAL_NUMBER:
             return AS_NUMBER(a) == AS_NUMBER(b);
-        case VAL_OBJ:{
-            ObjString* aString = AS_STRING(a);
-            ObjString* bString = AS_STRING(b);
-            return aString->length == bString->length &&
-                memcmp(aString->chars, bString -> chars, aString->length) == 0;
-        }
+        case VAL_OBJ:
+            return AS_OBJ(a) == AS_OBJ(b);
         default:
             return false;
     }

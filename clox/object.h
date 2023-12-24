@@ -24,6 +24,7 @@ struct Obj {
 struct ObjString {
     Obj obj;
     int length;
+    uint32_t hash;
     // Ending a struct with an array leverages the 'flexible array member' feature of C.
     // If this were a char* pointer, it'd cause an extra indirection.
     char chars[];

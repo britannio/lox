@@ -65,9 +65,11 @@ void initVM() {
     // The end of the linked list chain should be null so we know when we've reached the
     // last object.
     vm.objects = NULL;
+    initTable(&vm.strings);
 }
 
 void freeVM() {
+    freeTable(&vm.strings);
     freeObjects();
 }
 
