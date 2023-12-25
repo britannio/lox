@@ -1,4 +1,3 @@
-#include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 
@@ -35,7 +34,7 @@ static Entry *findEntry(Entry *entries, int capacity, Value *key) {
                 // We found a tombstone
                 if (tombstone == NULL) tombstone = entry;
             }
-        } else if (entry->key == key) {
+        } else if (valuesEqual(*entry->key, *key)) {
             // We found the key
             return entry;
         }
@@ -133,7 +132,6 @@ ObjString *tableFindString(const Table *table, const char *chars,
 
     uint32_t index = hash % table->capacity;
     for (;;) {
-        printf("index: %d\n", index);
         Entry *entry = &table->entries[index];
         if (entry->key == NULL) {
             // Stop if we find an empty entry that is not a tombstone.

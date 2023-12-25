@@ -28,16 +28,19 @@ static ObjString *allocateString(char *chars, int length, uint32_t hash) {
     obj->hash = hash;
     string->length = length;
     strcpy(string->chars, chars);
-    Value key = OBJ_VAL(string);
-    // The pointer must survive after the function completes
-    // TODO fix this memory leak...
-    Value *ptrKey = ALLOCATE(Value, 1);
-    memcpy(ptrKey, &key, sizeof(Value));
-
-    tableSet(&vm.strings, ptrKey, NIL_VAL);
+    Value *key = stringToValue(string);
+    tableSet(&vm.strings, key, NIL_VAL);
     // The old string is no longer needed
     FREE_ARRAY(char, chars, length + 1);
     return string;
+}
+
+Value* stringToValue(ObjString* str) {
+    Value value = OBJ_VAL(str);
+    // TODO fix this memory leak...
+    Value *ptr = ALLOCATE(Value, 1);
+    memcpy(ptr, &value, sizeof(Value));
+    return ptr;
 }
 
 static uint32_t hashString(const char *key, int length) {

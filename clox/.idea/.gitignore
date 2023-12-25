@@ -6,3 +6,7 @@
 /dataSources.local.xml
 # Editor-based HTTP Client requests
 /httpRequests/
+google-java-format.xml
+jpa-buddy.xml
+php.xml
+inspectionProfiles/

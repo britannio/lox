@@ -34,6 +34,8 @@ ObjString* takeString(char* chars, int length);
 ObjString* copyString(const char* chars, int length);
 void printObject(Value value);
 
+Value* stringToValue(ObjString* str);
+
 static inline bool isObjType(Value value, ObjType type) {
     // This is not put directly in IS_X macros as it would inadvertently
     // evaluate the expression passed to `value` twice which is problematic if

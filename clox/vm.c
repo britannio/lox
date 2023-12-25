@@ -65,10 +65,12 @@ void initVM() {
     // The end of the linked list chain should be null so we know when we've reached the
     // last object.
     vm.objects = NULL;
+    initTable(&vm.globals);
     initTable(&vm.strings);
 }
 
 void freeVM() {
+    freeTable(&vm.globals);
     freeTable(&vm.strings);
     freeObjects();
 }
@@ -76,6 +78,7 @@ void freeVM() {
 static InterpretResult run() {
 #define READ_BYTE() (*vm.ip++)
 #define READ_CONSTANT() (vm.chunk->constants.values[READ_BYTE()])
+#define READ_STRING() AS_STRING(READ_CONSTANT())
 #define READ_CONSTANT_LONG() \
     (vm.chunk->constants     \
          .values[(READ_BYTE() << 16) + (READ_BYTE() << 8) + READ_BYTE()])
@@ -125,6 +128,36 @@ static InterpretResult run() {
             case OP_FALSE:
                 push(BOOL_VAL(false));
                 break;
+            case OP_POP:
+                pop();
+                break;
+            case OP_GET_GLOBAL: {
+                ObjString* name = READ_STRING();
+                Value* nameKey = stringToValue(name);
+                Value value;
+                if (!tableGet(&vm.globals, nameKey, &value)) {
+                    runtimeError("Undefined variable '%s'.", name->chars);
+                }
+                push(value);
+                break;
+            }
+            case OP_DEFINE_GLOBAL: {
+                ObjString* name = READ_STRING();
+                Value* nameKey = stringToValue(name);
+                tableSet(&vm.globals, nameKey, peek(0));
+                pop();
+                break;
+            }
+            case OP_SET_GLOBAL: {
+                ObjString* name = READ_STRING();
+                Value* nameKey = stringToValue(name);
+                if (tableSet(&vm.globals, nameKey, peek(0)))  {
+                    tableDelete(&vm.globals, nameKey);
+                    runtimeError("Undefined variable '%s'.", name->chars);
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+                break;
+            }
             case OP_EQUAL: {
                 Value b = pop();
                 Value a = pop();
@@ -174,15 +207,19 @@ static InterpretResult run() {
                 // place
                 //  *(vm.stackTop - 1) = -*(vm.stackTop - 1);
                 break;
-            case OP_RETURN:
+            case OP_PRINT:
                 printValue(pop());
                 printf("\n");
+                break;
+            case OP_RETURN:
+                // Exit interpreter
                 return INTERPRET_OK;
         }
     }
 
 #undef READ_BYTE
 #undef READ_CONSTANT
+#undef READ_STRING
 #undef READ_CONSTANT_LONG
 #undef BINARY_OP
 }
