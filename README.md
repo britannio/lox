@@ -264,5 +264,42 @@ A chunk containing bytecode instructions can be created.
 0000  123 OP_CONSTANT         0 '1.2'
 0002    | OP_RETURN
 ```
+
+## ...
+
+forgot to take notes :(
+
+## 5 - Types of Values
+
+Until now, the only type was a number (double). This update introduces bool and 
+nil values.
+
+## 6 - Strings
+
+Strings can be created. Strings are the first 'instance' of the `Obj` type.
+C doesn't have struct inheritance but by making `Obj` the first field of 
+`ObjString`, it becomes safe to cast one to the other.
+
+As a challenge, I leveraged the *flexible array member* feature of C to store
+the string character array within the `ObjString` struct rather than having
+the struct store a pointer as this removes an indirection (better memory locality).
+
+
+## 7 - Hash Tables
+
+Hash tables that dynamically grow can be created.
+
+The first use case for this is string interning where we use the hash table
+as if it were a hash set. The benefit of mandatory string interning is that
+string equality becomes a trivial pointer comparison. 
+
+As a challenge, I switched out the `ObjString` key type for `Value` so that the
+hash table key can be a string, bool, double, nil or any future object such as
+functions and classes.
+
+In doing so, I hit a bug where dereferencing a pointer was corrupting a struct.
+It turns out that the pointer originated from a variable in another function and
+since the function had completed, the pointer was no longer valid :(.
+
   
 </details>
