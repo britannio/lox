@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
 #include "memory.h"
 #include "object.h"
@@ -19,8 +20,8 @@ void freeTable(Table *table) {
     initTable(table);
 }
 
-static Entry *findEntry(Entry *entries, int capacity, ObjString *key) {
-    uint32_t index = key->hash % capacity;
+static Entry *findEntry(Entry *entries, int capacity, Value *key) {
+    uint32_t index = hashValue(*key) % capacity;
     Entry *tombstone = NULL;
     for (;;) {
         // Get the entry
@@ -44,7 +45,7 @@ static Entry *findEntry(Entry *entries, int capacity, ObjString *key) {
 
 }
 
-bool tableGet(Table *table, ObjString *key, Value *value) {
+bool tableGet(Table *table, Value *key, Value *value) {
     // table entries may be null when count is zero
     if (table->count == 0) return false;
 
@@ -59,8 +60,8 @@ bool tableGet(Table *table, ObjString *key, Value *value) {
 static void adjustCapacity(Table *table, int capacity) {
     Entry *entries = ALLOCATE(Entry, capacity);
     for (int i = 0; i < capacity; i++) {
-        // Nulling the key & value is important in C as the values at could otherwise be arbitrary.
-        // and findEntry assumes that non-null keys represent occupied buckets.
+        // Nulling the key & value is important in C as the values at could otherwise be
+        // arbitrary. and findEntry assumes that non-null keys represent occupied buckets.
         entries[i].key = NULL;
         entries[i].value = NIL_VAL;
     }
@@ -84,23 +85,24 @@ static void adjustCapacity(Table *table, int capacity) {
     table->capacity = capacity;
 }
 
-bool tableSet(Table *table, ObjString *key, Value value) {
+bool tableSet(Table *table, Value *key, Value value) {
     if (table->count + 1 > table->capacity * TABLE_MAX_LOAD) {
         int capacity = GROW_CAPACITY(table->capacity);
         adjustCapacity(table, capacity);
     }
     Entry *entry = findEntry(table->entries, table->capacity, key);
     bool isNewKey = entry->key == NULL;
-    // tombstones count towards table->count, so we only increment the count if
-    // the entry is not a tombstone entry.
+    // tombstones have already been factored into table->count, so we only increment the
+    // count if the entry is not a tombstone entry.
     if (isNewKey && IS_NIL(entry->value)) table->count++;
 
     entry->key = key;
     entry->value = value;
+
     return isNewKey;
 }
 
-bool tableDelete(Table *table, ObjString *key) {
+bool tableDelete(Table *table, Value *key) {
     if (table->count == 0) return false;
 
     // Find the entry
@@ -125,20 +127,27 @@ void tableAddAll(Table *from, Table *to) {
 
 }
 
-ObjString *tableFindString(Table *table, const char *chars, int length, uint32_t hash) {
+ObjString *tableFindString(const Table *table, const char *chars,
+                           int length, uint32_t hash) {
     if (table->count == 0) return NULL;
 
     uint32_t index = hash % table->capacity;
     for (;;) {
+        printf("index: %d\n", index);
         Entry *entry = &table->entries[index];
         if (entry->key == NULL) {
-            // Stop if we fine an empty non-tombstone entry.
+            // Stop if we find an empty entry that is not a tombstone.
             if (IS_NIL(entry->value)) return NULL;
-        } else if (entry->key->length == length &&
-                   entry->key->hash == hash && hash &&
-                   memcmp(entry->key->chars, chars, length) == 0) {
-            // we found a slot with a matching key
-            return entry->key;
+        } else {
+            Value key = *entry->key;
+            // Assume that the table uses string keys!
+            Obj *keyObj = AS_OBJ(key);
+            ObjString *keyStr = AS_STRING(key);
+            if (keyStr->length == length && keyObj->hash == hash &&
+                memcmp(keyStr->chars, chars, length) == 0) {
+                // we found a slot with a matching ptrKey
+                return keyStr;
+            }
         }
 
         // Move to the next slot

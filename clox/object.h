@@ -18,13 +18,13 @@ typedef enum { OBJ_STRING } ObjType;
 // of structs matches the order that the struct fields are defined in
 struct Obj {
     ObjType type;
+    uint32_t hash;
     struct Obj* next;
 };
 
 struct ObjString {
     Obj obj;
     int length;
-    uint32_t hash;
     // Ending a struct with an array leverages the 'flexible array member' feature of C.
     // If this were a char* pointer, it'd cause an extra indirection.
     char chars[];

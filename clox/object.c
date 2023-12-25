@@ -21,33 +21,33 @@ static Obj *allocateObject(size_t size, ObjType type) {
 }
 
 static ObjString *allocateString(char *chars, int length, uint32_t hash) {
-    //    ObjString* string = ALLOCATE_OBJ(ObjString, OBJ_STRING);
     // size of 'flexible array member'
     size_t size = sizeof(ObjString) + (length + 1) * sizeof(char);
-    ObjString *string = (ObjString *) allocateObject(size, OBJ_STRING);
+    Obj *obj = allocateObject(size, OBJ_STRING);
+    ObjString *string = (ObjString *) obj;
+    obj->hash = hash;
     string->length = length;
-    string->hash = hash;
-    tableSet(&vm.strings, string, NIL_VAL);
     strcpy(string->chars, chars);
+    Value key = OBJ_VAL(string);
+    // The pointer must survive after the function completes
+    // TODO fix this memory leak...
+    Value *ptrKey = ALLOCATE(Value, 1);
+    memcpy(ptrKey, &key, sizeof(Value));
+
+    tableSet(&vm.strings, ptrKey, NIL_VAL);
     // The old string is no longer needed
     FREE_ARRAY(char, chars, length + 1);
     return string;
 }
 
-// FNV-1a hash function
 static uint32_t hashString(const char *key, int length) {
-    uint32_t hash = 2166136261u;
-    for (int i = 0; i < length; ++i) {
-        hash ^= (uint8_t) key[i];
-        hash *= 16777619;
-    }
-    return hash;
+    return hashByteArray((uint8_t *) key, length);
 }
 
 // Converts a C string into an ObjString, sharing the memory.
 ObjString *takeString(char *chars, int length) {
     uint32_t hash = hashString(chars, length);
-    ObjString* interned = tableFindString(&vm.strings, chars, length, hash);
+    ObjString *interned = tableFindString(&vm.strings, chars, length, hash);
 
     if (interned != NULL) {
         // We found an interned string with the same content
@@ -61,14 +61,18 @@ ObjString *takeString(char *chars, int length) {
 
 ObjString *copyString(const char *chars, int length) {
     uint32_t hash = hashString(chars, length);
-    ObjString* interned = tableFindString(&vm.strings, chars, length, hash);
+    ObjString *interned = tableFindString(&vm.strings, chars, length, hash);
 
+    // If the string has already been interned then use it
     if (interned != NULL) return interned;
 
+    // Otherwise, create a copy, leaving space for the null terminating character
+    // Note that we don't free these interned strings.
     char *heapChars = ALLOCATE(char, length + 1);
     memcpy(heapChars, chars, length);
     heapChars[length] = '\0';
-    return allocateString(heapChars, length, hash);
+
+    return allocateString(heapChars, length, hash); 
 }
 
 void printObject(Value value) {

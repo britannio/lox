@@ -2,6 +2,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <math.h>
 
 #include "object.h"
 #include "memory.h"
@@ -19,7 +20,7 @@ void writeValueArray(ValueArray *array, Value value) {
         int oldCapacity = array->capacity;
         array->capacity = GROW_CAPACITY(oldCapacity);
         array->values =
-            GROW_ARRAY(Value, array->values, oldCapacity, array->capacity);
+                GROW_ARRAY(Value, array->values, oldCapacity, array->capacity);
     }
 
     // Set the value and increment the index of the next item
@@ -63,4 +64,39 @@ bool valuesEqual(Value a, Value b) {
         default:
             return false;
     }
+}
+
+
+static uint32_t hashDouble(double number) {
+    // Normalisation so that doubles with the same value hold the same bytes
+    if (isnan(number)) number = 0.0;
+    if (isinf(number)) number = (number > 0) ? INFINITY : -INFINITY;
+    if (number == -0.0) number = 0.0;
+
+    uint8_t bytes[sizeof(double)];
+    memcpy(bytes, &number, sizeof(double));
+    return hashByteArray(bytes, sizeof(double));
+}
+
+uint32_t hashValue(const Value value) {
+    switch (value.type) {
+        case VAL_BOOL:
+            return AS_BOOL(value) ? 1 : 0;
+        case VAL_NIL:
+            return 0;
+        case VAL_NUMBER:
+            return hashDouble(AS_NUMBER(value));
+        case VAL_OBJ:
+            return AS_OBJ(value)->hash;
+    }
+}
+
+// FNV-1a hash function
+uint32_t hashByteArray(const uint8_t *bytes, int length) {
+    uint32_t hash = 2166136261u;
+    for (int i = 0; i < length; ++i) {
+        hash ^= bytes[i];
+        hash *= 16777619;
+    }
+    return hash;
 }
