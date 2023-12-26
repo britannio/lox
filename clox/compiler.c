@@ -62,6 +62,8 @@ Parser parser;
 Compiler *current = NULL;
 Chunk *compilingChunk;
 
+static int resolveLocal(Compiler *compiler, Token *name);
+
 static Chunk *currentChunk() { return compilingChunk; }
 
 // Prints the token error message
