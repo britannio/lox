@@ -50,7 +50,8 @@ typedef struct {
 } Local;
 
 typedef struct {
-    Local locals[UINT8_COUNT];
+    // Local locals[UINT8_COUNT];
+    Local locals[STACK_MAX]; 
     int localCount;
     int scopeDepth;
 } Compiler;
@@ -177,12 +178,13 @@ static void endCompiler() {
 }
 
 static void beginScope() { current->scopeDepth++; }
+
 static void endScope() {
     current->scopeDepth--;
 
     while (current->localCount > 0 &&
            current->locals[current->localCount - 1].depth >
-               current->scopeDepth) {
+           current->scopeDepth) {
         emitByte(OP_POP);
         current->localCount--;
     }
@@ -193,6 +195,7 @@ static void expression();
 static void statement();
 
 static void declaration();
+
 static uint8_t identifierConstant(Token *name);
 
 static ParseRule *getRule(TokenType type);
@@ -207,7 +210,7 @@ static void binary(bool canAssign) {
     // Each binary operator's right-hand operand precedence is one level higher
     // than its own (left associativity)
     ParseRule *rule = getRule(operatorType);
-    parsePrecedence((Precedence)(rule->precedence + 1));
+    parsePrecedence((Precedence) (rule->precedence + 1));
 
     switch (operatorType) {
         case TOKEN_BANG_EQUAL:
@@ -281,7 +284,7 @@ static void string(bool canAssign) {
     // We create a copy because this simplifies memory management when we need
     // to free the string.
     emitConstant(OBJ_VAL(
-        copyString(parser.previous.start + 1, parser.previous.length - 2)));
+                         copyString(parser.previous.start + 1, parser.previous.length - 2)));
 }
 
 static void namedVariable(Token name, bool canAssign) {
@@ -298,9 +301,9 @@ static void namedVariable(Token name, bool canAssign) {
 
     if (canAssign && match(TOKEN_EQUAL)) {
         expression();
-        emitBytes(setOp, (uint8_t)arg);
+        emitBytes(setOp, (uint8_t) arg);
     } else {
-        emitBytes(getOp, (uint8_t)arg);
+        emitBytes(getOp, (uint8_t) arg);
     }
 }
 
@@ -437,7 +440,7 @@ static int resolveLocal(Compiler *compiler, Token *name) {
 }
 
 static void addLocal(Token name) {
-    if (current->localCount == UINT8_COUNT) {
+    if (current->localCount == UINT16_COUNT) {
         error("Too many local variables in function.");
         return;
     }
@@ -478,7 +481,7 @@ static uint8_t parseVariable(const char *errorMessage) {
 
 static void markInitialized() {
     // Previously it was set to -1.
-    current->locals[current->localCount -1].depth = current->scopeDepth;
+    current->locals[current->localCount - 1].depth = current->scopeDepth;
 }
 
 static void defineVariable(uint8_t global) {
@@ -526,7 +529,7 @@ static void varDeclaration() {
     } else {
         emitByte(OP_NIL);
     }
-    consume(TOKEN_SEMICOLON, "Expect ';' after variable declartion.");
+    consume(TOKEN_SEMICOLON, "Expect ';' after variable declaration.");
 
     defineVariable(global);
 }

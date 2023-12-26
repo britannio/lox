@@ -301,5 +301,21 @@ In doing so, I hit a bug where dereferencing a pointer was corrupting a struct.
 It turns out that the pointer originated from a variable in another function and
 since the function had completed, the pointer was no longer valid :(.
 
+## 8 - Local Variables
+
+Grammar:
+
+```
+statement      → exprStmt
+| printStmt ;
+
+declaration    → varDecl
+| statement ;
+```
+
+## 9 - Global Variables
+
+
+
   
 </details>
