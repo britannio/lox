@@ -5,6 +5,7 @@
 #include "value.h"
 
 // TODO: What is the motivation behind supporting multiple chunks?
+// Possibly to give each function its own chunk
 
 // Each bytecode instruction will have a one byte operation code (opcode).
 typedef enum {

@@ -8,6 +8,7 @@
 
 static void repl() {
     // Max number of characters to evaluate at once
+    // 1024 is a hardcoded terminal limit, for longer inputs, the repl mode isn't suitable
     char line[1024];
     // REPL = Read-Eval-Print-Loop
     // Here is the loop
@@ -17,7 +18,7 @@ static void repl() {
         // fgets will read 1024 characters (we need space for the null character) and store it in {line}.
         if (!fgets(line, sizeof(line), stdin)) {
             // We failed to read the line
-            printf("/n");
+            printf("\n");
             break;
         }
 
@@ -41,8 +42,6 @@ static char *readFile(const char *path) {
     size_t fileSize = ftell(file);
     rewind(file);
 
-    // Is that casting a pointer to a char pointer?
-    // What if malloc fails?
     char *buffer = (char *) malloc(fileSize + 1);
     if (buffer == NULL) {
         // Not enough memory to store the file...

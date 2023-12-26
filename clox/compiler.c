@@ -139,18 +139,26 @@ static void emitBytes(uint8_t byte1, uint8_t byte2) {
 
 static void emitReturn() { emitByte(OP_RETURN); }
 
-static uint8_t makeConstant(Value value) {
-    int constant = addConstant(currentChunk(), value);
-    if (constant > UINT8_MAX) {
-        error("Too many constants in one chunk.");
-        return 0;
+static int makeConstant(Value value) {
+    int constant = -1;
+    Chunk *chunk = currentChunk();
+    // Risky optimisation to reuse values in the constant pool to avoid filling it up
+    // This assumes that we never remove values from the pool?
+    for (int i = chunk->count - 1; i >= 0; i--) {
+        if (valuesEqual(value, chunk->constants.values[i])) {
+            constant = i;
+            break;
+        }
+    }
+    if (constant < 0) {
+        constant = addConstant(currentChunk(), value);
     }
 
-    return (uint8_t)constant;
+    return constant;
 }
 
 static void emitConstant(Value value) {
-    emitBytes(OP_CONSTANT, makeConstant(value));
+    writeConstant(currentChunk(), value, parser.previous.line);
 }
 
 static void initCompiler(Compiler *compiler) {
@@ -395,7 +403,16 @@ static uint8_t identifierConstant(Token *name) {
     // Globals are referenced by name but the name string is too large to
     // fit into an instruction. Instead, the string is placed into a constants
     // table and the index in the table is returned.
-    return makeConstant(OBJ_VAL(copyString(name->start, name->length)));
+
+    ObjString *copied = copyString(name->start, name->length);
+    int constPoolIndex = makeConstant(OBJ_VAL(copied));
+    if (constPoolIndex > UINT8_MAX) {
+        // This can happen if we declare more than 256 variables in one chunk.
+        error("Too many constants in one chunk.");
+        return 0;
+    }
+
+    return (uint8_t) constPoolIndex;
 }
 
 static bool identifiersEqual(Token *a, Token *b) {
