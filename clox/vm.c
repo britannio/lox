@@ -258,10 +258,16 @@ InterpretResult interpret(const char *source) {
 }
 
 void push(Value value) {
+    // An if statement here isn't ideal given that it's at the heart of the VM.
+    // We pay the price of it per instruction. But I haven't profiled it and having this check here earlier would've
+    // saved some time debugging segfaults.
+    if (vm.stackTop - vm.stack >= STACK_MAX) {
+        runtimeError("Stack overflow m8.");
+    }
     // The stack top points to the next empty space.
-    // Beware that the stack could be full...
     *vm.stackTop = value;
     vm.stackTop++;
+
 }
 
 Value pop() {
