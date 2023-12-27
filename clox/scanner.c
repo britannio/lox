@@ -134,7 +134,7 @@ static TokenType identifierType() {
         case 'e':
             return checkKeyword(1, 3, "lse", TOKEN_ELSE);
         case 'f':
-            // false, for, fun
+            // false, for, fun, fin
             if (scanner.current - scanner.start > 1) {
                 // We have a token with 2+ characters (as opposed to a variable with the name 'f')
                 switch (scanner.start[1]) {
@@ -144,6 +144,8 @@ static TokenType identifierType() {
                         return checkKeyword(2, 1, "r", TOKEN_FOR);
                     case 'u':
                         return checkKeyword(2, 1, "n", TOKEN_FUN);
+                    case 'i':
+                        return checkKeyword(2, 1, "n", TOKEN_FINAL);
                 }
             }
         case 'i':

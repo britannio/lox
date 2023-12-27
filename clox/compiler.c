@@ -13,6 +13,8 @@
 
 #endif
 
+#include "vm.h"
+
 typedef struct {
     Token current;
     Token previous;
@@ -47,13 +49,15 @@ typedef struct {
 typedef struct {
     Token name;
     int depth;
+    bool mutable;
 } Local;
 
 typedef struct {
     // Local locals[UINT8_COUNT];
-    Local locals[STACK_MAX]; 
+    Local locals[STACK_MAX];
     int localCount;
     int scopeDepth;
+    Table globalMutability;
 } Compiler;
 
 Parser parser;
@@ -165,11 +169,14 @@ static void emitConstant(Value value) {
 static void initCompiler(Compiler *compiler) {
     compiler->localCount = 0;
     compiler->scopeDepth = 0;
+    initTable(&compiler->globalMutability);
     current = compiler;
 }
 
 static void endCompiler() {
     emitReturn();
+    // TODO this assumes that Compiler=current.
+    freeTable(&current->globalMutability);
 #ifdef DEBUG_PRINT_CODE
     if (!parser.hadError) {
         disassembleChunk(currentChunk(), "code");
@@ -290,16 +297,27 @@ static void string(bool canAssign) {
 static void namedVariable(Token name, bool canAssign) {
     uint8_t getOp, setOp;
     int arg = resolveLocal(current, &name);
+    bool mutable;
     if (arg != -1) {
         getOp = OP_GET_LOCAL;
         setOp = OP_SET_LOCAL;
+        Local local = current->locals[arg];
+        mutable = local.mutable;
     } else {
         arg = identifierConstant(&name);
         getOp = OP_GET_GLOBAL;
         setOp = OP_SET_GLOBAL;
+        Value mutableVal;
+        Value* key = &currentChunk()->constants.values[arg];
+        tableGet(&current->globalMutability, key, &mutableVal);
+        mutable = AS_BOOL(mutableVal);
     }
 
     if (canAssign && match(TOKEN_EQUAL)) {
+        if (!mutable) {
+            error("Attempted to mutate a final variable.");
+            return;
+        }
         expression();
         emitBytes(setOp, (uint8_t) arg);
     } else {
@@ -334,46 +352,47 @@ static void unary(bool canAssign) {
 // Recall that this is just an array and that enums have a corresponding number.
 // This table makes it easy to see which tokens are available for use too!
 ParseRule rules[] = {
-    [TOKEN_LEFT_PAREN] = {grouping, NULL, PREC_NONE},
-    [TOKEN_RIGHT_PAREN] = {NULL, NULL, PREC_NONE},
-    [TOKEN_LEFT_BRACE] = {NULL, NULL, PREC_NONE},
-    [TOKEN_RIGHT_BRACE] = {NULL, NULL, PREC_NONE},
-    [TOKEN_COMMA] = {NULL, NULL, PREC_NONE},
-    [TOKEN_DOT] = {NULL, NULL, PREC_NONE},
-    [TOKEN_MINUS] = {unary, binary, PREC_TERM},
-    [TOKEN_PLUS] = {NULL, binary, PREC_TERM},
-    [TOKEN_SEMICOLON] = {NULL, NULL, PREC_NONE},
-    [TOKEN_SLASH] = {NULL, binary, PREC_FACTOR},
-    [TOKEN_STAR] = {NULL, binary, PREC_FACTOR},
-    [TOKEN_BANG] = {unary, NULL, PREC_EQUALITY},
-    [TOKEN_BANG_EQUAL] = {NULL, binary, PREC_NONE},
-    [TOKEN_EQUAL] = {NULL, NULL, PREC_NONE},
-    [TOKEN_EQUAL_EQUAL] = {NULL, binary, PREC_EQUALITY},
-    [TOKEN_GREATER] = {NULL, binary, PREC_COMPARISON},
-    [TOKEN_GREATER_EQUAL] = {NULL, binary, PREC_COMPARISON},
-    [TOKEN_LESS] = {NULL, binary, PREC_COMPARISON},
-    [TOKEN_LESS_EQUAL] = {NULL, binary, PREC_COMPARISON},
-    [TOKEN_IDENTIFIER] = {variable, NULL, PREC_NONE},
-    [TOKEN_STRING] = {string, NULL, PREC_NONE},
-    [TOKEN_NUMBER] = {number, NULL, PREC_NONE},
-    [TOKEN_AND] = {NULL, NULL, PREC_NONE},
-    [TOKEN_CLASS] = {NULL, NULL, PREC_NONE},
-    [TOKEN_ELSE] = {NULL, NULL, PREC_NONE},
-    [TOKEN_FALSE] = {literal, NULL, PREC_NONE},
-    [TOKEN_FOR] = {NULL, NULL, PREC_NONE},
-    [TOKEN_FUN] = {NULL, NULL, PREC_NONE},
-    [TOKEN_IF] = {NULL, NULL, PREC_NONE},
-    [TOKEN_NIL] = {literal, NULL, PREC_NONE},
-    [TOKEN_OR] = {NULL, NULL, PREC_NONE},
-    [TOKEN_PRINT] = {NULL, NULL, PREC_NONE},
-    [TOKEN_RETURN] = {NULL, NULL, PREC_NONE},
-    [TOKEN_SUPER] = {NULL, NULL, PREC_NONE},
-    [TOKEN_THIS] = {NULL, NULL, PREC_NONE},
-    [TOKEN_TRUE] = {literal, NULL, PREC_NONE},
-    [TOKEN_VAR] = {NULL, NULL, PREC_NONE},
-    [TOKEN_WHILE] = {NULL, NULL, PREC_NONE},
-    [TOKEN_ERROR] = {NULL, NULL, PREC_NONE},
-    [TOKEN_EOF] = {NULL, NULL, PREC_NONE},
+        [TOKEN_LEFT_PAREN] = {grouping, NULL, PREC_NONE},
+        [TOKEN_RIGHT_PAREN] = {NULL, NULL, PREC_NONE},
+        [TOKEN_LEFT_BRACE] = {NULL, NULL, PREC_NONE},
+        [TOKEN_RIGHT_BRACE] = {NULL, NULL, PREC_NONE},
+        [TOKEN_COMMA] = {NULL, NULL, PREC_NONE},
+        [TOKEN_DOT] = {NULL, NULL, PREC_NONE},
+        [TOKEN_MINUS] = {unary, binary, PREC_TERM},
+        [TOKEN_PLUS] = {NULL, binary, PREC_TERM},
+        [TOKEN_SEMICOLON] = {NULL, NULL, PREC_NONE},
+        [TOKEN_SLASH] = {NULL, binary, PREC_FACTOR},
+        [TOKEN_STAR] = {NULL, binary, PREC_FACTOR},
+        [TOKEN_BANG] = {unary, NULL, PREC_EQUALITY},
+        [TOKEN_BANG_EQUAL] = {NULL, binary, PREC_NONE},
+        [TOKEN_EQUAL] = {NULL, NULL, PREC_NONE},
+        [TOKEN_EQUAL_EQUAL] = {NULL, binary, PREC_EQUALITY},
+        [TOKEN_GREATER] = {NULL, binary, PREC_COMPARISON},
+        [TOKEN_GREATER_EQUAL] = {NULL, binary, PREC_COMPARISON},
+        [TOKEN_LESS] = {NULL, binary, PREC_COMPARISON},
+        [TOKEN_LESS_EQUAL] = {NULL, binary, PREC_COMPARISON},
+        [TOKEN_IDENTIFIER] = {variable, NULL, PREC_NONE},
+        [TOKEN_STRING] = {string, NULL, PREC_NONE},
+        [TOKEN_NUMBER] = {number, NULL, PREC_NONE},
+        [TOKEN_AND] = {NULL, NULL, PREC_NONE},
+        [TOKEN_CLASS] = {NULL, NULL, PREC_NONE},
+        [TOKEN_ELSE] = {NULL, NULL, PREC_NONE},
+        [TOKEN_FALSE] = {literal, NULL, PREC_NONE},
+        [TOKEN_FOR] = {NULL, NULL, PREC_NONE},
+        [TOKEN_FUN] = {NULL, NULL, PREC_NONE},
+        [TOKEN_IF] = {NULL, NULL, PREC_NONE},
+        [TOKEN_NIL] = {literal, NULL, PREC_NONE},
+        [TOKEN_OR] = {NULL, NULL, PREC_NONE},
+        [TOKEN_PRINT] = {NULL, NULL, PREC_NONE},
+        [TOKEN_RETURN] = {NULL, NULL, PREC_NONE},
+        [TOKEN_SUPER] = {NULL, NULL, PREC_NONE},
+        [TOKEN_THIS] = {NULL, NULL, PREC_NONE},
+        [TOKEN_TRUE] = {literal, NULL, PREC_NONE},
+        [TOKEN_VAR] = {NULL, NULL, PREC_NONE},
+        [TOKEN_FINAL] = {NULL, NULL, PREC_NONE},
+        [TOKEN_WHILE] = {NULL, NULL, PREC_NONE},
+        [TOKEN_ERROR] = {NULL, NULL, PREC_NONE},
+        [TOKEN_EOF] = {NULL, NULL, PREC_NONE},
 };
 
 static void parsePrecedence(Precedence precedence) {
@@ -439,7 +458,7 @@ static int resolveLocal(Compiler *compiler, Token *name) {
     return -1;
 }
 
-static void addLocal(Token name) {
+static void addLocal(Token name, bool mutable) {
     if (current->localCount == UINT16_COUNT) {
         error("Too many local variables in function.");
         return;
@@ -448,9 +467,10 @@ static void addLocal(Token name) {
     local->name = name;
     // Local's start in an uninitialised state
     local->depth = -1;
+    local->mutable = mutable;
 }
 
-static void declareVariable() {
+static void declareVariable(bool mutable) {
     if (current->scopeDepth == 0) return;
 
     Token *name = &parser.previous;
@@ -467,16 +487,18 @@ static void declareVariable() {
         }
     }
 
-    addLocal(*name);
+    addLocal(*name, mutable);
 }
 
-static uint8_t parseVariable(const char *errorMessage) {
+static uint8_t parseVariable(const char *errorMessage, bool mutable) {
     consume(TOKEN_IDENTIFIER, errorMessage);
 
-    declareVariable();
+    declareVariable(mutable);
     if (current->scopeDepth > 0) return 0;
 
-    return identifierConstant(&parser.previous);
+    uint8_t constPoolIndex = identifierConstant(&parser.previous);
+    Value *varName = &currentChunk()->constants.values[constPoolIndex];
+    tableSet(&current->globalMutability, varName, BOOL_VAL(mutable));
 }
 
 static void markInitialized() {
@@ -522,12 +544,26 @@ static void block() {
 }
 
 static void varDeclaration() {
-    uint8_t global = parseVariable("Expect variable name.");
+    uint8_t global = parseVariable("Expect variable name.", true);
 
     if (match(TOKEN_EQUAL)) {
         expression();
     } else {
         emitByte(OP_NIL);
+    }
+    consume(TOKEN_SEMICOLON, "Expect ';' after variable declaration.");
+
+    defineVariable(global);
+}
+
+static void finalVarDeclaration() {
+    uint8_t global = parseVariable("Expect variable name.", false);
+
+    if (match(TOKEN_EQUAL)) {
+        expression();
+    } else {
+        error("Expect assignment of final variable.");
+        return;
     }
     consume(TOKEN_SEMICOLON, "Expect ';' after variable declaration.");
 
@@ -558,6 +594,7 @@ static void synchronize() {
             case TOKEN_CLASS:
             case TOKEN_FUN:
             case TOKEN_VAR:
+            case TOKEN_FINAL:
             case TOKEN_FOR:
             case TOKEN_IF:
             case TOKEN_WHILE:
@@ -577,6 +614,8 @@ static void synchronize() {
 static void declaration() {
     if (match(TOKEN_VAR)) {
         varDeclaration();
+    } else if (match(TOKEN_FINAL)) {
+        finalVarDeclaration();
     } else {
         statement();
     }
