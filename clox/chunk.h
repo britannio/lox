@@ -9,38 +9,42 @@
 
 // Each bytecode instruction will have a one byte operation code (opcode).
 typedef enum {
-    OP_CONSTANT,
-    OP_CONSTANT_LONG,
-    OP_NIL,
-    OP_TRUE,
-    OP_FALSE,
-    OP_POP,
-    OP_GET_LOCAL,
-    OP_SET_LOCAL,
-    OP_GET_GLOBAL,
-    OP_DEFINE_GLOBAL,
-    OP_SET_GLOBAL,
-    OP_EQUAL,
-    OP_GREATER,
-    OP_LESS,
-    OP_ADD,
-    OP_SUBTRACT,
-    OP_MULTIPLY,
-    OP_DIVIDE,
-    OP_NOT,
-    OP_NEGATE,
-    OP_PRINT,
-    // Return from the current function
-    OP_RETURN,
+  OP_CONSTANT,
+  OP_CONSTANT_LONG,
+  OP_NIL,
+  OP_TRUE,
+  OP_FALSE,
+  OP_POP,
+  OP_GET_LOCAL,
+  OP_SET_LOCAL,
+  OP_GET_GLOBAL,
+  OP_DEFINE_GLOBAL,
+  OP_SET_GLOBAL,
+  OP_EQUAL,
+  OP_GREATER,
+  OP_LESS,
+  OP_ADD,
+  OP_SUBTRACT,
+  OP_MULTIPLY,
+  OP_DIVIDE,
+  OP_NOT,
+  OP_NEGATE,
+  OP_PRINT,
+  OP_JUMP,
+  OP_JUMP_IF_FALSE,
+  OP_LOOP,
+  // Return from the current function
+  OP_RETURN,
 } OpCode;
 
 // Data stored alongside an instruction
 typedef struct {
-    int count;
-    int capacity;
-    uint8_t *code;
-    int *lines; // Mirrors the code array in size but stores the source line number corresponding to each op-code.
-    ValueArray constants; // A pool of constants
+  int count;
+  int capacity;
+  uint8_t *code;
+  int *lines; // Mirrors the code array in size but stores the source line
+  // number corresponding to each op-code.
+  ValueArray constants; // A pool of constants
 } Chunk;
 
 void initChunk(Chunk *chunk);
