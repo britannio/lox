@@ -1,0 +1,4 @@
+// A final variable
+fin hello = "world";
+
+print(hello);

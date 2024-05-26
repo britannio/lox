@@ -39,3 +39,28 @@ void freeObjects() {
         object = next;
     }
 }
+
+
+void initByteArray(ByteArray *array) {
+  array->capacity = 0;
+  array->count = 0;
+  array->values = NULL;
+}
+
+void writeByteArray(ByteArray *array, uint8_t value) {
+  // Resize the array if it is full/uninitialised
+  if (array->capacity < array->count + 1) {
+    int oldCapacity = array->capacity;
+    array->capacity = GROW_CAPACITY(oldCapacity);
+    array->values = GROW_ARRAY(uint8_t, array->values, oldCapacity, array->capacity);
+  }
+
+  // Set the value and increment the index of the next item
+  array->values[array->count] = value;
+  array->count++;
+}
+
+void freeByteArray(ByteArray *array) {
+  FREE_ARRAY(uint8_t, array->values, array->capacity);
+  initByteArray(array);
+}

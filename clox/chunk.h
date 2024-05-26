@@ -21,6 +21,8 @@ typedef enum {
   OP_DEFINE_GLOBAL,
   OP_SET_GLOBAL,
   OP_EQUAL,
+  // Preserves the first expression on the stack
+  OP_EQUAL_PRESERVE,
   OP_GREATER,
   OP_LESS,
   OP_ADD,

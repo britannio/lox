@@ -16,6 +16,7 @@
 #endif
 
 #include "vm.h"
+#include "memory.h"
 
 typedef struct {
   Token current;
@@ -129,8 +130,15 @@ static void consume(TokenType type, const char *message) {
   errorAtCurrent(message);
 }
 
+
+/**
+ * @return true if the current token matches the provided one. No side effects.
+ */
 static bool check(TokenType type) { return parser.current.type == type; }
 
+/**
+ * @return true if the current token matches the provided one. Moves to the next token.
+ */
 static bool match(TokenType type) {
   if (!check(type))
     return false;
@@ -423,6 +431,7 @@ ParseRule rules[] = {
         [TOKEN_DOT] = {NULL, NULL, PREC_NONE},
         [TOKEN_MINUS] = {unary, binary, PREC_TERM},
         [TOKEN_PLUS] = {NULL, binary, PREC_TERM},
+        [TOKEN_COLON] = {NULL, NULL, PREC_NONE},
         [TOKEN_SEMICOLON] = {NULL, NULL, PREC_NONE},
         [TOKEN_SLASH] = {NULL, binary, PREC_FACTOR},
         [TOKEN_STAR] = {NULL, binary, PREC_FACTOR},
@@ -454,6 +463,9 @@ ParseRule rules[] = {
         [TOKEN_VAR] = {NULL, NULL, PREC_NONE},
         [TOKEN_FINAL] = {NULL, NULL, PREC_NONE},
         [TOKEN_WHILE] = {NULL, NULL, PREC_NONE},
+        [TOKEN_SWITCH] = {NULL, NULL, PREC_NONE},
+        [TOKEN_CASE] = {NULL, NULL, PREC_NONE},
+        [TOKEN_DEFAULT] = {NULL, NULL, PREC_NONE},
         [TOKEN_ERROR] = {NULL, NULL, PREC_NONE},
         [TOKEN_EOF] = {NULL, NULL, PREC_NONE},
 };
@@ -750,6 +762,52 @@ static void whileStatement() {
   emitByte(OP_POP);    // Remove loop condition
 }
 
+static void switchStatement() {
+  consume(TOKEN_LEFT_PAREN, "Expect '(' after 'switch'.");
+  expression(); // Expression to switch over
+  consume(TOKEN_RIGHT_PAREN, "Expect ')' after switch expression.");
+  consume(TOKEN_LEFT_BRACE, "Expect '{' after ')'.");
+
+  ByteArray caseExitJumps;
+  initByteArray(&caseExitJumps);
+
+  while (match(TOKEN_CASE)) {
+    expression(); // The case expression to compare to the main switch expression.
+    emitByte(OP_EQUAL_PRESERVE);
+    int nextCaseJump = emitJump(OP_JUMP_IF_FALSE);
+    emitByte(OP_POP); // Pop the result of the equality check
+    emitByte(OP_POP); // Pop the switch statement expression
+    consume(TOKEN_COLON, "Expect ':' after case expression.");
+    statement(); // The body of the case statement to run if true
+    int exitJump = emitJump(OP_JUMP);
+    writeByteArray(&caseExitJumps, exitJump);
+    // If the case does not match, jump over the case body.
+    patchJump(nextCaseJump);
+    emitByte(OP_POP); // Pop the result of the equality check
+  }
+
+  int defaultCaseExitJump = -1;
+  if (match(TOKEN_DEFAULT)) {
+    emitByte(OP_POP); // Pop the switch statement expression
+    consume(TOKEN_COLON, "Expect ':' after 'default'.");
+    statement(); // The body of the default case statement
+    defaultCaseExitJump = emitJump(OP_JUMP); // Jump over the fallthrough OP_POP instruction
+  }
+
+
+  // For the switch statement expression
+  emitByte(OP_POP);
+  if (defaultCaseExitJump != -1) patchJump(defaultCaseExitJump);
+
+  for (int i = 0; i < caseExitJumps.count; i++) {
+    patchJump(caseExitJumps.values[i]);
+  }
+
+  freeByteArray(&caseExitJumps);
+
+  consume(TOKEN_RIGHT_BRACE, "Expect '}' after switch statement.");
+}
+
 static void synchronize() {
   parser.panicMode = false;
 
@@ -804,6 +862,8 @@ static void statement() {
     beginScope();
     block();
     endScope();
+  } else if (match(TOKEN_SWITCH)) {
+    switchStatement();
   } else {
     expressionStatement();
   }

@@ -4,6 +4,7 @@
 #include "common.h"
 #include "object.h"
 
+
 #define ALLOCATE(type, count) \
     (type*)reallocate(NULL, 0, sizeof(type) * (count))
 
@@ -27,5 +28,16 @@
 void *reallocate(void *pointer, size_t oldSize, size_t newSize);
 void freeObjects();
 
+typedef struct {
+  int capacity;
+  int count;
+  uint8_t *values;
+} ByteArray;
+
+void initByteArray(ByteArray *array);
+
+void writeByteArray(ByteArray *array, uint8_t value);
+
+void freeByteArray(ByteArray *array);
 
 #endif

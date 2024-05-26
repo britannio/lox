@@ -1,0 +1,32 @@
+
+var name = "Britannio";
+
+switch (name) {
+case "Alistair": {
+    print("Hello Alistair");
+    print("Look ma, two prints");
+}
+case "Britannio": {
+    print("Hello Britannio");
+}
+default: {
+    print("Hello M8");
+}
+}
+
+// Empty switch statement
+switch (name) { }
+
+// Just a default case
+switch (name) {
+default:
+    print("Only a default case");
+}
+
+// Just a case that won't be matched
+switch (name) {
+case "Alistair":
+    print("Unexpected");
+}
+
+print("We survived");
