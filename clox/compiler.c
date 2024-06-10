@@ -60,15 +60,25 @@ typedef struct {
   Local locals[STACK_MAX];
   int localCount;
   int scopeDepth;
+  int unpatchedBreaks;
   Table globalMutability;
 } Compiler;
+
+typedef struct CurrentLoop {
+  struct CurrentLoop *enclosing;
+  int continueOffset;
+  int unpatchedBreakJumps;
+} CurrentLoop;
+
 
 Parser parser;
 // Global variables aren't the best practice but the book author made the
 // decision to save time. This is particularly a problem for multithreaded
 // scenarios.
 Compiler *current = NULL;
+CurrentLoop *currentLoop = NULL;
 Chunk *compilingChunk;
+Array unpatchedBreaks;
 
 static int resolveLocal(Compiler *compiler, Token *name);
 
@@ -172,7 +182,7 @@ static void emitLoop(int loopStart) {
   if (offset > UINT16_MAX)
     error("Loop body too large.");
 
-  emitByte((offset >> 8) * 0xFF);
+  emitByte((offset >> 8) & 0xFF);
   emitByte(offset & 0xFF);
 }
 
@@ -204,7 +214,6 @@ static void emitConstant(Value value) {
 static void patchJump(int offset) {
   // -2 to adjust for the bytecode for the jump offset itself.
   int jump = currentChunk()->count - offset - 2;
-
   if (jump > UINT16_MAX) {
     error("Too much code to jump over.");
   }
@@ -216,14 +225,17 @@ static void patchJump(int offset) {
 static void initCompiler(Compiler *compiler) {
   compiler->localCount = 0;
   compiler->scopeDepth = 0;
+  compiler->unpatchedBreaks = 0;
   initTable(&compiler->globalMutability);
   current = compiler;
+  initArray(&unpatchedBreaks, sizeof(int));
 }
 
 static void endCompiler() {
   emitReturn();
   // TODO this assumes that Compiler=current.
   freeTable(&current->globalMutability);
+  freeArray(&unpatchedBreaks);
 #ifdef DEBUG_PRINT_CODE
   if (!parser.hadError) {
     disassembleChunk(currentChunk(), "code");
@@ -466,6 +478,8 @@ ParseRule rules[] = {
         [TOKEN_SWITCH] = {NULL, NULL, PREC_NONE},
         [TOKEN_CASE] = {NULL, NULL, PREC_NONE},
         [TOKEN_DEFAULT] = {NULL, NULL, PREC_NONE},
+        [TOKEN_BREAK] = {NULL, NULL, PREC_NONE},
+        [TOKEN_CONTINUE] = {NULL, NULL, PREC_NONE},
         [TOKEN_ERROR] = {NULL, NULL, PREC_NONE},
         [TOKEN_EOF] = {NULL, NULL, PREC_NONE},
 };
@@ -661,14 +675,18 @@ static void expressionStatement() {
 }
 
 static void forStatement() {
-  // Variables within the for statement should only exist within it
+  // A variable defined in the initialiser of the for statement should have the same scope as the for statement itself.
+  // This way, the variable will be out of scope after the for statement completes.
   beginScope();
+
   // be scoped to the loop body.
   consume(TOKEN_LEFT_PAREN, "Expect '(' after 'for'.");
   if (match(TOKEN_SEMICOLON)) {
     // The initialiser was skipped
   } else if (match(TOKEN_VAR)) {
     varDeclaration(); // initialiser
+  } else if (match(TOKEN_FINAL))  {
+    finalVarDeclaration(); // initialiser
   } else {
     expressionStatement();
   }
@@ -702,13 +720,31 @@ static void forStatement() {
     patchJump(bodyJump);
   }
 
-  statement();
+  CurrentLoop loop = {
+          .enclosing = currentLoop,
+          .continueOffset = loopStart,
+          .unpatchedBreakJumps = 0,
+  };
+  currentLoop = &loop;
+
+  statement(); // Loop body
+
   emitLoop(loopStart);
+
+  int breakStatementsToPatch = loop.unpatchedBreakJumps;
+  current->unpatchedBreaks -= breakStatementsToPatch;
+  currentLoop = loop.enclosing; // Pop
 
   if (exitJump != -1) {
     patchJump(exitJump);
     emitByte(OP_POP);
   }
+
+  // Patch all the OP_JUMP instructions produced by break statements.
+  for (int i = current->unpatchedBreaks; i < current->unpatchedBreaks + breakStatementsToPatch; i++) {
+    patchJump(READ_AS(int, &unpatchedBreaks, i));
+  }
+  unpatchedBreaks.count -= breakStatementsToPatch;
 
   endScope();
 }
@@ -753,13 +789,35 @@ static void whileStatement() {
   // Skip over the while statement if the condition is false.
   int exitJump = emitJump(OP_JUMP_IF_FALSE);
   emitByte(OP_POP); // Remove the loop condition
+
+  CurrentLoop loop = {
+          .enclosing = currentLoop,
+          .continueOffset = loopStart,
+          .unpatchedBreakJumps = 0,
+  };
+  currentLoop = &loop;
+
   statement();      // While statement body
-  // Adds a OP_LOOP instruction at the end of the while statement so it jumps
+
+  int breakStatementsToPatch = loop.unpatchedBreakJumps;
+  current->unpatchedBreaks -= breakStatementsToPatch;
+  currentLoop = loop.enclosing; // Pop CurrentLoop
+
+  // Adds a OP_LOOP instruction at the end of the while statement, so it jumps
   // back to the loop condition for the next iteration.
   emitLoop(loopStart);
 
   patchJump(exitJump); // Where to skip to if the loop condition is false
   emitByte(OP_POP);    // Remove loop condition
+
+  // Patch all the OP_JUMP instructions produced by break statements.
+  // This goes after the OP_POP to remove the loop condition as breaks will only
+  // be executed when the loop condition is true and in that case, the condition
+  // has already been popped.
+  for (int i = current->unpatchedBreaks; i < current->unpatchedBreaks + breakStatementsToPatch; i++) {
+    patchJump(READ_AS(int, &unpatchedBreaks, i));
+  }
+  unpatchedBreaks.count -= breakStatementsToPatch;
 }
 
 static void switchStatement() {
@@ -768,8 +826,8 @@ static void switchStatement() {
   consume(TOKEN_RIGHT_PAREN, "Expect ')' after switch expression.");
   consume(TOKEN_LEFT_BRACE, "Expect '{' after ')'.");
 
-  ByteArray caseExitJumps;
-  initByteArray(&caseExitJumps);
+  Array caseExitJumps;
+  initArray(&caseExitJumps, sizeof(int));
 
   while (match(TOKEN_CASE)) {
     expression(); // The case expression to compare to the main switch expression.
@@ -780,7 +838,7 @@ static void switchStatement() {
     consume(TOKEN_COLON, "Expect ':' after case expression.");
     statement(); // The body of the case statement to run if true
     int exitJump = emitJump(OP_JUMP);
-    writeByteArray(&caseExitJumps, exitJump);
+    writeArray(&caseExitJumps, &exitJump);
     // If the case does not match, jump over the case body.
     patchJump(nextCaseJump);
     emitByte(OP_POP); // Pop the result of the equality check
@@ -800,12 +858,44 @@ static void switchStatement() {
   if (defaultCaseExitJump != -1) patchJump(defaultCaseExitJump);
 
   for (int i = 0; i < caseExitJumps.count; i++) {
-    patchJump(caseExitJumps.values[i]);
+    patchJump(READ_AS(int, &caseExitJumps, i));
   }
 
-  freeByteArray(&caseExitJumps);
+  freeArray(&caseExitJumps);
 
   consume(TOKEN_RIGHT_BRACE, "Expect '}' after switch statement.");
+}
+
+static void continueStatement() {
+  // Jump to the start of a while loop, before the condition.
+  // Jump to the advancement expression of a for loop.
+
+  // Variables inside the loop should only survive the duration of the loop right?
+
+  // This statement is only valid within a while/for loop.
+  // We need to keep track of the position we should jump to for the current while/for loop.
+  // This should be done in a stack fashion
+
+  consume(TOKEN_SEMICOLON, "Expect ';' after 'continue'.");
+
+  if (currentLoop == NULL) {
+    error("Can't use 'continue' outside of a loop.");
+    return;
+  }
+  emitLoop(currentLoop->continueOffset);
+}
+
+static void breakStatement() {
+  consume(TOKEN_SEMICOLON, "Expect ';' after 'break'.");
+
+  if (currentLoop == NULL) {
+    error("Can't use 'break' outside of a loop.");
+    return;
+  }
+  int exitJump = emitJump(OP_JUMP);
+  writeArray(&unpatchedBreaks, &exitJump);
+  currentLoop->unpatchedBreakJumps += 1;
+  current->unpatchedBreaks += 1;
 }
 
 static void synchronize() {
@@ -864,6 +954,10 @@ static void statement() {
     endScope();
   } else if (match(TOKEN_SWITCH)) {
     switchStatement();
+  } else if (match(TOKEN_CONTINUE)) {
+    continueStatement();
+  } else if (match(TOKEN_BREAK)) {
+    breakStatement();
   } else {
     expressionStatement();
   }

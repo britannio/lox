@@ -21,6 +21,9 @@
 #define GROW_ARRAY(type, pointer, oldCapacity, newCapacity) \
     (type*)reallocate(pointer, sizeof(type) * (oldCapacity), sizeof(type) * (newCapacity))
 
+#define GROW_ARRAY_TYPE_SIZE(type_size, pointer, oldCapacity, newCapacity) \
+    reallocate(pointer, type_size * (oldCapacity), type_size * (newCapacity))
+
 // Not using free() as we want a central place to keep track of memory usage for GC purposes.
 #define FREE_ARRAY(type, pointer, oldCount) \
     reallocate(pointer, sizeof(type) * (oldCount), 0)
@@ -31,13 +34,17 @@ void freeObjects();
 typedef struct {
   int capacity;
   int count;
-  uint8_t *values;
-} ByteArray;
+  void *values;
+  size_t type;
+} Array;
 
-void initByteArray(ByteArray *array);
+void initArray(Array *array, size_t type);
 
-void writeByteArray(ByteArray *array, uint8_t value);
+void writeArray(Array *array, void *value);
 
-void freeByteArray(ByteArray *array);
+void freeArray(Array *array);
+
+
+#define READ_AS(type, array, i) (((type*) (array)->values)[i])
 
 #endif

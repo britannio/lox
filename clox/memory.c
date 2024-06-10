@@ -2,6 +2,7 @@
 #include "vm.h"
 
 #include <stdlib.h>
+#include <string.h>
 
 void* reallocate(void* pointer, size_t oldSize, size_t newSize) {
     if (newSize == 0) {
@@ -41,26 +42,27 @@ void freeObjects() {
 }
 
 
-void initByteArray(ByteArray *array) {
+void initArray(Array *array, size_t type) {
   array->capacity = 0;
   array->count = 0;
   array->values = NULL;
+  array->type = type;
 }
 
-void writeByteArray(ByteArray *array, uint8_t value) {
+void writeArray(Array *array, void *value) {
   // Resize the array if it is full/uninitialised
   if (array->capacity < array->count + 1) {
     int oldCapacity = array->capacity;
     array->capacity = GROW_CAPACITY(oldCapacity);
-    array->values = GROW_ARRAY(uint8_t, array->values, oldCapacity, array->capacity);
+    array->values = GROW_ARRAY_TYPE_SIZE(array->type, array->values, oldCapacity, array->capacity);
   }
 
   // Set the value and increment the index of the next item
-  array->values[array->count] = value;
+  memcpy(&((uint8_t*) array->values)[array->count * array->type], value, array->type);
   array->count++;
 }
 
-void freeByteArray(ByteArray *array) {
+void freeArray(Array *array) {
   FREE_ARRAY(uint8_t, array->values, array->capacity);
-  initByteArray(array);
+  initArray(array, array->type);
 }

@@ -1,0 +1,19 @@
+
+
+
+var thisIsGlobal = "this is global";
+
+var whileCondition = true;
+while (whileCondition) {
+    whileCondition = false;
+    var scopedToWhile = "scoped to while";
+}
+// print(scopedToWhile); // Should fail
+
+switch (thisIsGlobal) {
+case "this is global" {
+    var scopedToSwitch = "scoped to switch";
+}
+}
+
+print(scopedToSwitch); // Should fail, but it might erroneously work

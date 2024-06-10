@@ -1,10 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include "common.h"
-#include "chunk.h"
-#include "debug.h"
 #include "vm.h"
+
+#include "memory.h"
 
 static void repl() {
     // Max number of characters to evaluate at once
@@ -68,6 +67,28 @@ static void runFile(const char *path) {
 
     if (result == INTERPRET_COMPILE_ERROR) exit(65);
     if (result == INTERPRET_RUNTIME_ERROR) exit(70);
+}
+
+void intArrayTest() {
+  Array array;
+  initArray(&array, sizeof(uint16_t));
+  uint16_t n1 = 45;
+  uint16_t n2 = 51;
+  writeArray(&array, &n1);
+  uint16_t n1r;
+  uint16_t n2r;
+
+  n1r = READ_AS(uint16_t , &array, 0);
+  printf("Expected %d, actual %d\n", n1, n1r);
+
+  writeArray(&array, &n2);
+
+  n1r = READ_AS(uint16_t, &array, 0);
+  printf("Expected %d, actual %d\n", n1, n1r);
+
+  n2r = READ_AS(uint16_t, &array, 1);
+  printf("Expected %d, actual %d\n", n2, n2r);
+
 }
 
 int main(int argc, const char *argv[]) {

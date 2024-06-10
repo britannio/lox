@@ -1,0 +1,16 @@
+var counter = 0;
+
+while (counter < 5) {
+    //if (counter == 3) break;
+    print(counter);
+    counter = counter + 1;
+    break;
+}
+
+for (var i=0; i<5; i = i + 1) {
+    if (i == 3) break;
+    print("another loop");
+    print(i);
+}
+
+print("got to end");
