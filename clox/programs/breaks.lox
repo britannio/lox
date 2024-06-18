@@ -1,16 +1,36 @@
-var counter = 0;
+// var counter = 0;
+//
+// while (counter < 5) {
+//     //if (counter == 3) break;
+//     //print(counter);
+//     counter = counter + 1;
+//     continue;
+//     print("hello");
+// }
+//
+// for (var i=0; i<5; i = i + 1) {
+//     if (i == 3) break;
+//     print("another loop");
+//     print(i);
+// }
+//
+// print("got to end");
 
-while (counter < 5) {
-    //if (counter == 3) break;
-    print(counter);
-    counter = counter + 1;
-    break;
+
+fun abc() {
+   var counter = 0;
+
+   while (counter < 5) {
+       if (counter == 3) break;
+       print(counter);
+       counter = counter + 1;
+   }
 }
 
-for (var i=0; i<5; i = i + 1) {
-    if (i == 3) break;
-    print("another loop");
-    print(i);
+fun def() {
+    abc();
+    abc();
 }
 
-print("got to end");
+def();
+def();
