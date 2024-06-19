@@ -53,7 +53,14 @@ typedef struct {
   Token name;
   int depth;
   bool mutable;
+  bool isCaptured;
 } Local;
+
+typedef struct {
+  // The local slot that the upvalue is capturing
+  uint8_t index;
+  bool isLocal;
+} Upvalue;
 
 typedef enum {
   TYPE_FUNCTION,
@@ -61,13 +68,15 @@ typedef enum {
 } FunctionType;
 
 typedef struct Compiler {
-  struct Compiler* enclosing;
+  struct Compiler *enclosing;
   ObjFunction *function;
   FunctionType type;
 
   // Local locals[UINT8_COUNT];
   Local locals[STACK_MAX];
   int localCount;
+  // A function can reference 256 variables in an enclosing scope.
+  Upvalue upvalues[UINT8_COUNT];
   int scopeDepth;
   int unpatchedBreaks;
   Table globalMutability;
@@ -89,6 +98,9 @@ CurrentLoop *currentLoop = NULL;
 Array unpatchedBreaks;
 
 static int resolveLocal(Compiler *compiler, Token *name);
+
+static int resolveUpvalue(Compiler *compiler, Token *name);
+
 static uint8_t argumentList();
 
 static Chunk *currentChunk() {
@@ -258,9 +270,10 @@ static void initCompiler(Compiler *compiler, FunctionType type) {
   }
 
   // Reserve stack slot 0 as a local variable
-  Local* local = &current->locals[current->localCount++];
+  Local *local = &current->locals[current->localCount++];
   local->depth = 0;
   // Empty string so that it cannot clash with user defined locals
+  local->isCaptured = false;
   local->name.start = "";
   local->name.length = 0;
 }
@@ -275,8 +288,8 @@ static ObjFunction *endCompiler() {
 #ifdef DEBUG_PRINT_CODE
   if (!parser.hadError) {
     disassembleChunk(currentChunk(), function->name != NULL
-    ? function->name->chars
-    : "<script>");
+                                     ? function->name->chars
+                                     : "<script>");
   }
 #endif
 
@@ -289,9 +302,15 @@ static void beginScope() { current->scopeDepth++; }
 static void endScope() {
   current->scopeDepth--;
 
-  while (current->localCount > 0 &&
-         current->locals[current->localCount - 1].depth > current->scopeDepth) {
-    emitByte(OP_POP);
+  while (current->localCount > 0 && current->locals[current->localCount - 1].depth > current->scopeDepth) {
+    if (current->locals[current->localCount - 1].isCaptured) {
+      // The local variable is captured, instead of removing it from the stack,
+      // move it to the heap.
+      emitByte(OP_CLOSE_UPVALUE);
+    } else {
+      emitByte(OP_POP);
+    }
+
     current->localCount--;
   }
 }
@@ -432,6 +451,11 @@ static void namedVariable(Token name, bool canAssign) {
     setOp = OP_SET_LOCAL;
     Local local = current->locals[arg];
     mutable = local.mutable;
+  } else if ((arg = resolveUpvalue(current, &name)) != -1) {
+    // This branch is hit if we fail to resolve the variable as one within the
+    // scope of the function being compiled.
+    getOp = OP_GET_UPVALUE;
+    setOp = OP_SET_UPVALUE;
   } else {
     arg = identifierConstant(&name);
     getOp = OP_GET_GLOBAL;
@@ -594,6 +618,50 @@ static int resolveLocal(Compiler *compiler, Token *name) {
   return -1;
 }
 
+static int addUpvalue(Compiler *compiler, uint8_t index, bool isLocal) {
+  int upvalueCount = compiler->function->upvalueCount;
+
+  // If we already created an upvalue pointing to a closed over variable, reuse it.
+  for (int i = 0; i < upvalueCount; i++) {
+    Upvalue *upvalue = &compiler->upvalues[i];
+    if (upvalue->index == index && upvalue->isLocal == isLocal) {
+      return i;
+    }
+  }
+
+  if (upvalueCount == UINT8_COUNT) {
+    error("Too many closure variables in function.");
+    return 0;
+  }
+
+  compiler->upvalues[upvalueCount].isLocal = isLocal;
+  compiler->upvalues[upvalueCount].index = index;
+  return compiler->function->upvalueCount++;
+
+}
+
+static int resolveUpvalue(Compiler *compiler, Token *name) {
+  // True if 'compiler' is the top level compiler paired with <script>
+  // (the invisible function containing everything)
+  if (compiler->enclosing == NULL) return -1;
+
+  // We're here because we didn't resolve the variable in 'compiler'.
+  // So next we try 'compiler.enclosing' i.e. the parent function/script of this
+  int local = resolveLocal(compiler->enclosing, name);
+  if (local != -1) {
+    // We just captured a local variable
+    compiler->enclosing->locals[local].isCaptured = true;
+    return addUpvalue(compiler, (uint8_t) local, true);
+  }
+
+  int upvalue = resolveUpvalue(compiler->enclosing, name);
+  if (upvalue != -1) {
+    return addUpvalue(compiler, (uint8_t) upvalue, false);
+  }
+
+  return -1;
+}
+
 static void addLocal(Token name, bool mutable) {
   if (current->localCount == UINT16_COUNT) {
     error("Too many local variables in function.");
@@ -604,6 +672,7 @@ static void addLocal(Token name, bool mutable) {
   // Local's start in an uninitialised state
   local->depth = -1;
   local->mutable = mutable;
+  local->isCaptured = false;
 }
 
 static void declareVariable(bool mutable) {
@@ -729,7 +798,16 @@ static void function(FunctionType type) {
   block();
 
   ObjFunction *function = endCompiler();
-  emitBytes(OP_CONSTANT, makeConstant(OBJ_VAL(function)));
+
+  // Note that the length of the operand varies
+  emitBytes(OP_CLOSURE, makeConstant(OBJ_VAL(function)));
+  for (int i = 0; i < function->upvalueCount; i++) {
+    // 1 = local variable in enclosing function
+    // 0 = upvalue of a function
+    emitByte(compiler.upvalues[i].isLocal ? 1 : 0);
+    // slot/upvalue index to capture
+    emitByte(compiler.upvalues[i].index);
+  }
 }
 
 static void funDeclaration() {
@@ -787,7 +865,7 @@ static void forStatement() {
     // The initialiser was skipped
   } else if (match(TOKEN_VAR)) {
     varDeclaration(); // initialiser
-  } else if (match(TOKEN_FINAL))  {
+  } else if (match(TOKEN_FINAL)) {
     finalVarDeclaration(); // initialiser
   } else {
     expressionStatement();

@@ -11,7 +11,7 @@
 
 // An ongoing function call
 typedef struct {
-  ObjFunction *function;
+  ObjClosure *closure;
   uint8_t *ip;
   // A pointer to the first value stack slot available to the function
   Value *slots;
@@ -25,6 +25,9 @@ typedef struct {
     Value* stackTop;
     Table globals;
     Table strings;
+    // open = upvalue pointing to local variable on stack
+    // closed = variable has moved onto stack
+    ObjUpvalue *openUpvalues;
     Obj* objects; // linked list of allocated objects
 } VM;
 
