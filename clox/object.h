@@ -32,6 +32,7 @@ typedef enum {
 // of structs matches the order that the struct fields are defined in
 struct Obj {
   ObjType type;
+  bool isMarked;
   uint32_t hash;
   struct Obj *next;
 };

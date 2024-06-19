@@ -1180,3 +1180,12 @@ ObjFunction *compile(const char *source) {
   ObjFunction *function = endCompiler();
   return parser.hadError ? NULL : function;
 }
+
+void markCompilerRoots() {
+  // GC can run during compilation :)
+  Compiler *compiler = current;
+  while (compiler != NULL) {
+    markObject((Obj *) compiler->function);
+    compiler = compiler->enclosing;
+  }
+}

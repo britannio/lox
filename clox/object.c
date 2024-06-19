@@ -14,9 +14,13 @@
 static Obj *allocateObject(size_t size, ObjType type) {
   Obj *object = (Obj *) reallocate(NULL, 0, size);
   object->type = type;
+  object->isMarked = false;
   // Insert the object at the head of the 'objects' linked list.
   object->next = vm.objects;
   vm.objects = object;
+#ifdef DEBUG_LOG_GC
+  printf("%p allocate %zu for %d\n", (void*) object, size, type);
+#endif
   return object;
 }
 
@@ -58,19 +62,13 @@ static ObjString *allocateString(char *chars, int length, uint32_t hash) {
   obj->hash = hash;
   string->length = length;
   strcpy(string->chars, chars);
-  Value *key = stringToValue(string);
-  tableSet(&vm.strings, *key, NIL_VAL);
+  Value key = OBJ_VAL(string);
+  push(key); // Make it GC safe
+  tableSet(&vm.strings, key, NIL_VAL);
+  pop();
   // The old string is no longer needed
   FREE_ARRAY(char, chars, length + 1);
   return string;
-}
-
-Value *stringToValue(ObjString *str) {
-  Value value = OBJ_VAL(str);
-  // TODO fix this memory leak...
-  Value *ptr = ALLOCATE(Value, 1);
-  memcpy(ptr, &value, sizeof(Value));
-  return ptr;
 }
 
 static uint32_t hashString(const char *key, int length) {

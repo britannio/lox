@@ -18,24 +18,31 @@ typedef struct {
 } CallFrame;
 
 typedef struct {
-    CallFrame frames[FRAMES_MAX];
-    // The number of ongoing function calls
-    int frameCount;
-    Value stack[STACK_MAX];
-    Value* stackTop;
-    Table globals;
-    Table strings;
-    // open = upvalue pointing to local variable on stack
-    // closed = variable has moved onto stack
-    ObjUpvalue *openUpvalues;
-    Obj* objects; // linked list of allocated objects
+  CallFrame frames[FRAMES_MAX];
+  // The number of ongoing function calls
+  int frameCount;
+  Value stack[STACK_MAX];
+  Value *stackTop;
+  Table globals;
+  Table strings;
+  // open = upvalue pointing to local variable on stack
+  // closed = variable has moved onto stack
+  ObjUpvalue *openUpvalues;
+
+  size_t bytesAllocated;
+  size_t nextGC;
+  Obj *objects; // linked list of allocated objects
+  int grayCount;
+  int grayCapacity;
+  // A stack of object pointers.
+  Obj **grayStack;
 } VM;
 
 // Used to set the error code of the clox program.
 typedef enum {
-    INTERPRET_OK,
-    INTERPRET_COMPILE_ERROR,
-    INTERPRET_RUNTIME_ERROR
+  INTERPRET_OK,
+  INTERPRET_COMPILE_ERROR,
+  INTERPRET_RUNTIME_ERROR
 } InterpretResult;
 
 extern VM vm;
@@ -44,9 +51,10 @@ void initVM();
 
 void freeVM();
 
-InterpretResult interpret(const char* source);
+InterpretResult interpret(const char *source);
 
-void push (Value value);
+void push(Value value);
+
 Value pop();
 
 #endif

@@ -165,8 +165,9 @@ static bool isFalsey(Value value) {
 }
 
 static void concatenate() {
-  ObjString *b = AS_STRING(pop());
-  ObjString *a = AS_STRING(pop());
+  // Peeking instead of popping for GC safety
+  ObjString *b = AS_STRING(peek(0));
+  ObjString *a = AS_STRING(peek(1));
 
   int length = a->length + b->length;
   char *chars = ALLOCATE(char, length + 1);
@@ -175,6 +176,8 @@ static void concatenate() {
   chars[length] = '\0';
 
   ObjString *result = takeString(chars, length);
+  pop();
+  pop();
   push(OBJ_VAL(result));
 }
 
@@ -185,6 +188,13 @@ void initVM() {
   // The end of the linked list chain should be null so we know when we've
   // reached the last object.
   vm.objects = NULL;
+  vm.bytesAllocated = 0;
+  vm.nextGC = 1024 * 1024;
+
+  vm.grayCount = 0;
+  vm.grayCapacity = 0;
+  vm.grayStack = NULL;
+
   initTable(&vm.globals);
   initTable(&vm.strings);
 
@@ -269,9 +279,9 @@ static InterpretResult run() {
       }
       case OP_GET_GLOBAL: {
         ObjString *name = READ_STRING();
-        Value *nameKey = stringToValue(name);
+        Value nameKey = OBJ_VAL(name);
         Value value;
-        if (!tableGet(&vm.globals, nameKey, &value)) {
+        if (!tableGet(&vm.globals, &nameKey, &value)) {
           runtimeError("Undefined variable '%s'.", name->chars);
         }
         push(value);
@@ -279,16 +289,16 @@ static InterpretResult run() {
       }
       case OP_DEFINE_GLOBAL: {
         ObjString *name = READ_STRING();
-        Value *nameKey = stringToValue(name);
-        tableSet(&vm.globals, *nameKey, peek(0));
+        Value nameKey = OBJ_VAL(name);
+        tableSet(&vm.globals, nameKey, peek(0));
         pop();
         break;
       }
       case OP_SET_GLOBAL: {
         ObjString *name = READ_STRING();
-        Value *nameKey = stringToValue(name);
-        if (tableSet(&vm.globals, *nameKey, peek(0))) {
-          tableDelete(&vm.globals, nameKey);
+        Value nameKey = OBJ_VAL(name);
+        if (tableSet(&vm.globals, nameKey, peek(0))) {
+          tableDelete(&vm.globals, &nameKey);
           runtimeError("Undefined variable '%s'.", name->chars);
           return INTERPRET_RUNTIME_ERROR;
         }
