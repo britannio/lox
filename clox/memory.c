@@ -47,6 +47,7 @@ void markObject(Obj *object) {
 
   object->isMarked = true;
 
+  // Grow vm.grayStack array if necessary
   if (vm.grayCapacity < vm.grayCount + 1) {
     vm.grayCapacity = GROW_CAPACITY(vm.grayCapacity);
     // We use realloc here instead of our reallocate because reallocate could
@@ -56,6 +57,7 @@ void markObject(Obj *object) {
     // We don't have enough memory to contine GC
     if (vm.grayStack == NULL) exit(1);
   }
+
   vm.grayStack[vm.grayCount++] = object;
 }
 
@@ -77,6 +79,11 @@ static void blackenObject(Obj *object) {
 #endif
 
   switch (object->type) {
+    case OBJ_CLASS: {
+      ObjClass *klass = (ObjClass *) object;
+      markObject((Obj *) klass->name);
+      break;
+    }
     case OBJ_CLOSURE: {
       ObjClosure *closure = (ObjClosure *) object;
       markObject((Obj *) closure->function);
@@ -89,6 +96,12 @@ static void blackenObject(Obj *object) {
       ObjFunction *function = (ObjFunction *) object;
       markObject((Obj *) function->name);
       markArray(&function->chunk.constants);
+      break;
+    }
+    case OBJ_INSTANCE: {
+      ObjInstance *instance = (ObjInstance *) object;
+      markObject((Obj *) instance->klass);
+      markTable(&instance->fields);
       break;
     }
     case OBJ_UPVALUE:
@@ -106,6 +119,10 @@ static void freeObject(Obj *object) {
 #endif
 
   switch (object->type) {
+    case OBJ_CLASS: {
+      FREE(ObjClass, object);
+      break;
+    }
     case OBJ_CLOSURE: {
       ObjClosure *closure = (ObjClosure *) object;
       FREE_ARRAY(ObjUpvalue*, closure->upvalues, closure->upvalueCount);
@@ -123,6 +140,12 @@ static void freeObject(Obj *object) {
     }
     case OBJ_NATIVE: {
       FREE(ObjNative, object);
+      break;
+    }
+    case OBJ_INSTANCE: {
+      ObjInstance *instance = (ObjInstance *) object;
+      freeTable(&instance->fields);
+      FREE(ObjInstance, object);
       break;
     }
     case OBJ_STRING: {
@@ -153,6 +176,7 @@ void freeObjects() {
 }
 
 static void markRoots() {
+  // Mark every stack value
   for (Value *slot = vm.stack; slot < vm.stackTop; slot++) {
     markValue(*slot);
   }
@@ -182,6 +206,9 @@ static void traceReferences() {
 
 static void sweep() {
   Obj *previous = NULL;
+  // All objects can be found in this linked list
+  // We free memory by finding objects in here that weren't marked and getting
+  // rid of them
   Obj *object = vm.objects;
   while (object != NULL) {
     if (object->isMarked) {
@@ -197,6 +224,7 @@ static void sweep() {
         // Removes the original object from the linked list
         previous->next = object;
       } else {
+        // previous == NULL so this is the first element of the linked list
         vm.objects = object;
       }
 

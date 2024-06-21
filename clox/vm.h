@@ -22,6 +22,7 @@ typedef struct {
   // The number of ongoing function calls
   int frameCount;
   Value stack[STACK_MAX];
+  // The next position to push an element to
   Value *stackTop;
   Table globals;
   Table strings;

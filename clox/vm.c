@@ -95,6 +95,12 @@ static bool call(ObjClosure *closure, int argCount) {
 static bool callValue(Value callee, int argCount) {
   if (IS_OBJ(callee)) {
     switch (OBJ_TYPE(callee)) {
+      case OBJ_CLASS: {
+        ObjClass *klass = AS_CLASS(callee);
+        // Replace 'callee' with the class instance
+        vm.stackTop[-argCount - 1] = OBJ_VAL(newInstance(klass));
+        return true;
+      }
       case OBJ_CLOSURE:
         return call(AS_CLOSURE(callee), argCount);
       case OBJ_NATIVE: {
@@ -237,6 +243,10 @@ static InterpretResult run() {
     printf("          ");
     for (Value *slot = vm.stack; slot < vm.stackTop; slot++) {
       printf("[ ");
+      if (IS_OBJ(*slot)) {
+        // Print the pointer
+        printf("ptr:%p ", AS_OBJ(*slot));
+      }
       printValue(*slot);
       printf(" ]");
     }
@@ -281,7 +291,7 @@ static InterpretResult run() {
         ObjString *name = READ_STRING();
         Value nameKey = OBJ_VAL(name);
         Value value;
-        if (!tableGet(&vm.globals, &nameKey, &value)) {
+        if (!tableGet(&vm.globals, nameKey, &value)) {
           runtimeError("Undefined variable '%s'.", name->chars);
         }
         push(value);
@@ -298,7 +308,7 @@ static InterpretResult run() {
         ObjString *name = READ_STRING();
         Value nameKey = OBJ_VAL(name);
         if (tableSet(&vm.globals, nameKey, peek(0))) {
-          tableDelete(&vm.globals, &nameKey);
+          tableDelete(&vm.globals, nameKey);
           runtimeError("Undefined variable '%s'.", name->chars);
           return INTERPRET_RUNTIME_ERROR;
         }
@@ -319,6 +329,42 @@ static InterpretResult run() {
         Value b = pop();
         Value a = pop();
         push(BOOL_VAL(valuesEqual(a, b)));
+        break;
+      }
+      case OP_GET_PROPERTY: {
+        // We can only use the .property notation on class instances
+        if (!IS_INSTANCE(peek(0))) {
+          runtimeError("Only instances have properties.");
+          return INTERPRET_RUNTIME_ERROR;
+        }
+
+        ObjInstance *instance = AS_INSTANCE(peek(0));
+        ObjString *name = READ_STRING();
+        Value nameKey = OBJ_VAL(name);
+
+        Value value;
+        if (tableGet(&instance->fields, nameKey, &value)) {
+          pop(); // Instance
+          push(value);
+          break;
+        }
+
+        runtimeError("Undefined property '%s'.", name->chars);
+        return INTERPRET_RUNTIME_ERROR;
+      }
+      case OP_SET_PROPERTY: {
+        if (!IS_INSTANCE(peek(1))) {
+          runtimeError("Only instances have fields.");
+          return INTERPRET_RUNTIME_ERROR;
+        }
+
+        ObjInstance *instance = AS_INSTANCE(peek(1));
+        ObjString *key = READ_STRING();
+        Value keyv = OBJ_VAL(key);
+        tableSet(&instance->fields, keyv, peek(0));
+        Value value = pop();
+        pop(); // Pop the instance
+        push(value);
         break;
       }
       case OP_EQUAL_PRESERVE: {
@@ -437,6 +483,10 @@ static InterpretResult run() {
         frame = &vm.frames[vm.frameCount - 1];
         break;
       }
+      case OP_CLASS:
+        // Create a new class object with the given name.
+        push(OBJ_VAL(newClass(READ_STRING())));
+        break;
     }
   }
 
