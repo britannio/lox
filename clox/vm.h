@@ -26,6 +26,7 @@ typedef struct {
   Value *stackTop;
   Table globals;
   Table strings;
+  ObjString *initString;
   // open = upvalue pointing to local variable on stack
   // closed = variable has moved onto stack
   ObjUpvalue *openUpvalues;

@@ -41,10 +41,12 @@ typedef enum {
   OP_LOOP,
   OP_CALL,
   OP_CLOSURE,
+  OP_INVOKE,
   OP_CLOSE_UPVALUE,
   // Return from the current function
   OP_RETURN,
   OP_CLASS,
+  OP_METHOD
 } OpCode;
 
 // Data stored alongside an instruction

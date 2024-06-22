@@ -64,6 +64,8 @@ typedef struct {
 
 typedef enum {
   TYPE_FUNCTION,
+  TYPE_INITIALISER,
+  TYPE_METHOD,
   TYPE_SCRIPT
 } FunctionType;
 
@@ -82,6 +84,10 @@ typedef struct Compiler {
   Table globalMutability;
 } Compiler;
 
+typedef struct ClassCompiler {
+  struct ClassCompiler *enclosing;
+} ClassCompiler;
+
 typedef struct CurrentLoop {
   struct CurrentLoop *enclosing;
   int continueOffset;
@@ -94,6 +100,7 @@ Parser parser;
 // decision to save time. This is particularly a problem for multithreaded
 // scenarios.
 Compiler *current = NULL;
+ClassCompiler *currentClass = NULL;
 CurrentLoop *currentLoop = NULL;
 Array unpatchedBreaks;
 
@@ -210,8 +217,14 @@ static void emitLoop(int loopStart) {
 }
 
 static void emitReturn() {
-  // The implicit return will return a nil value
-  emitByte(OP_NIL);
+  if (current->type == TYPE_INITIALISER) {
+    // Return the new instance
+    emitBytes(OP_GET_LOCAL, 0);
+  } else {
+    // The implicit return will return a nil value
+    emitByte(OP_NIL);
+  }
+
   emitByte(OP_RETURN);
 }
 
@@ -220,7 +233,7 @@ static int makeConstant(Value value) {
   Chunk *chunk = currentChunk();
   // Risky optimisation to reuse values in the constant pool to avoid filling it
   // up This assumes that we never remove values from the pool?
-  for (int i = chunk->count - 1; i >= 0; i--) {
+  for (int i = chunk->constants.count - 1; i >= 0; i--) {
     if (valuesEqual(value, chunk->constants.values[i])) {
       constant = i;
       break;
@@ -274,8 +287,13 @@ static void initCompiler(Compiler *compiler, FunctionType type) {
   local->depth = 0;
   // Empty string so that it cannot clash with user defined locals
   local->isCaptured = false;
-  local->name.start = "";
-  local->name.length = 0;
+  if (type != TYPE_FUNCTION) {
+    local->name.start = "this";
+    local->name.length = 4;
+  } else {
+    local->name.start = "";
+    local->name.length = 0;
+  }
 }
 
 static ObjFunction *endCompiler() {
@@ -388,6 +406,11 @@ static void dot(bool canAssign) {
     // We say property not field because fields belong to objects whereas we
     // might be referencing methods of a class which are properties.
     emitBytes(OP_SET_PROPERTY, name);
+  } else if (match(TOKEN_LEFT_PAREN)) {
+    // we are getting a method then immediately invoking it.
+    uint8_t argCount = argumentList();
+    emitBytes(OP_INVOKE, name);
+    emitByte(argCount);
   } else {
     emitBytes(OP_GET_PROPERTY, name);
   }
@@ -497,6 +520,17 @@ static void variable(bool canAssign) {
   namedVariable(parser.previous, canAssign);
 }
 
+// 'this' is a reserved keyword in C++
+static void this_(bool canAssign) {
+  if (currentClass == NULL) {
+    error("Can't use 'this' outside of a class.");
+    return;
+  }
+
+  // False because we can't do 'this = x'
+  variable(false);
+}
+
 static void unary(bool canAssign) {
   TokenType operatorType = parser.previous.type;
 
@@ -555,7 +589,7 @@ ParseRule rules[] = {
         [TOKEN_PRINT] = {NULL, NULL, PREC_NONE},
         [TOKEN_RETURN] = {NULL, NULL, PREC_NONE},
         [TOKEN_SUPER] = {NULL, NULL, PREC_NONE},
-        [TOKEN_THIS] = {NULL, NULL, PREC_NONE},
+        [TOKEN_THIS] = {this_, NULL, PREC_NONE},
         [TOKEN_TRUE] = {literal, NULL, PREC_NONE},
         [TOKEN_VAR] = {NULL, NULL, PREC_NONE},
         [TOKEN_FINAL] = {NULL, NULL, PREC_NONE},
@@ -825,17 +859,45 @@ static void function(FunctionType type) {
   }
 }
 
+static void method() {
+  consume(TOKEN_IDENTIFIER, "Expect method name.");
+  uint8_t constant = identifierConstant(&parser.previous);
+
+  FunctionType type = TYPE_METHOD;
+  if (parser.previous.length == 4 && memcmp(parser.previous.start, "init", 4) == 0) {
+    type = TYPE_INITIALISER;
+  }
+
+  function(type);
+  emitBytes(OP_METHOD, constant);
+}
+
 static void classDeclaration() {
   // Parse the name of the class
   consume(TOKEN_IDENTIFIER, "Expect class name.");
+  Token className = parser.previous;
   uint8_t nameConstant = identifierConstant(&parser.previous);
   declareVariable(false);
 
   emitBytes(OP_CLASS, nameConstant);
   defineVariable(nameConstant);
 
+  ClassCompiler classCompiler;
+  classCompiler.enclosing = currentClass;
+  // Does not escape the function as the LL value is removed at the end of this.
+  currentClass = &classCompiler;
+
+  // Put the class on the stack so that method compilation can treat it the same
+  // as if it were defined as a 'local variable' in a function scope.
+  namedVariable(className, false);
   consume(TOKEN_LEFT_BRACE, "Expect '{' before class body.");
+  // Classes only contain methods (no fields in the declaration)
+  while (!check(TOKEN_RIGHT_BRACE) && !check(TOKEN_EOF)) {
+    method();
+  }
   consume(TOKEN_RIGHT_BRACE, "Expect '}' after class body.");
+  emitByte(OP_POP); // Pop the class we placed here for method compilation.
+  currentClass = currentClass->enclosing;
 }
 
 static void funDeclaration() {
@@ -996,6 +1058,9 @@ static void returnStatement() {
     // Return nil
     emitReturn();
   } else {
+    if (current->type == TYPE_INITIALISER) {
+      error("Can't return value from an initialiser.");
+    }
     // Parse the return value
     expression();
     consume(TOKEN_SEMICOLON, "Expect ';' after return value.");
