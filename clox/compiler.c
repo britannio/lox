@@ -86,6 +86,7 @@ typedef struct Compiler {
 
 typedef struct ClassCompiler {
   struct ClassCompiler *enclosing;
+  bool hasSuperClass;
 } ClassCompiler;
 
 typedef struct CurrentLoop {
@@ -520,6 +521,40 @@ static void variable(bool canAssign) {
   namedVariable(parser.previous, canAssign);
 }
 
+static Token syntheticToken(const char *text) {
+  Token token;
+  token.start = text;
+  token.length = (int) strlen(text);
+  return token;
+}
+
+static void super_(bool canAssign) {
+  if (currentClass == NULL) {
+    error("Can't use 'super' outside of a class.");
+  } else if (!currentClass->hasSuperClass) {
+    error("can't use 'super' in a class with no superclass.");
+  }
+
+  consume(TOKEN_DOT, "Expect '.' after 'super'.");
+  consume(TOKEN_IDENTIFIER, "Expect superclass method name.");
+  uint8_t name = identifierConstant(&parser.previous);
+
+  namedVariable(syntheticToken("this"), false);
+  // If we are immediately invoking the super method then we can use a custom
+  // instruction that skips some work.
+  if (match(TOKEN_LEFT_PAREN)) {
+    uint8_t argCount = argumentList();
+    namedVariable(syntheticToken("super"), false);
+    emitBytes(OP_SUPER_INVOKE, name);
+    emitByte(argCount);
+  } else {
+    namedVariable(syntheticToken("super"), false);
+    emitBytes(OP_GET_SUPER, name);
+  }
+//  namedVariable(syntheticToken("super"), false);
+//  emitBytes(OP_GET_SUPER, name);
+}
+
 // 'this' is a reserved keyword in C++
 static void this_(bool canAssign) {
   if (currentClass == NULL) {
@@ -588,7 +623,7 @@ ParseRule rules[] = {
         [TOKEN_OR] = {NULL, or_, PREC_OR},
         [TOKEN_PRINT] = {NULL, NULL, PREC_NONE},
         [TOKEN_RETURN] = {NULL, NULL, PREC_NONE},
-        [TOKEN_SUPER] = {NULL, NULL, PREC_NONE},
+        [TOKEN_SUPER] = {super_, NULL, PREC_NONE},
         [TOKEN_THIS] = {this_, NULL, PREC_NONE},
         [TOKEN_TRUE] = {literal, NULL, PREC_NONE},
         [TOKEN_VAR] = {NULL, NULL, PREC_NONE},
@@ -883,9 +918,31 @@ static void classDeclaration() {
   defineVariable(nameConstant);
 
   ClassCompiler classCompiler;
+  classCompiler.hasSuperClass = false;
   classCompiler.enclosing = currentClass;
   // Does not escape the function as the LL value is removed at the end of this.
   currentClass = &classCompiler;
+
+  // The class extends a superclass
+  if (match(TOKEN_LESS)) {
+    consume(TOKEN_IDENTIFIER, "Expect superclass name.");
+    // Look up the super class
+    variable(false);
+
+    if (identifiersEqual(&className, &parser.previous)) {
+      error("A class can't inherit from itself.");
+    }
+
+    // Each class gets a new scope for 'super' so that it doesn't clash when
+    // defining multiple classes in the same scope.
+    beginScope();
+    addLocal(syntheticToken("super"), false);
+    defineVariable(0);
+
+    namedVariable(className, false);
+    emitByte(OP_INHERIT);
+    classCompiler.hasSuperClass = true;
+  }
 
   // Put the class on the stack so that method compilation can treat it the same
   // as if it were defined as a 'local variable' in a function scope.
@@ -897,6 +954,11 @@ static void classDeclaration() {
   }
   consume(TOKEN_RIGHT_BRACE, "Expect '}' after class body.");
   emitByte(OP_POP); // Pop the class we placed here for method compilation.
+
+  if (classCompiler.hasSuperClass) {
+    endScope();
+  }
+
   currentClass = currentClass->enclosing;
 }
 
