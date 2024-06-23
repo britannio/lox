@@ -34,6 +34,17 @@ void freeValueArray(ValueArray *array) {
 }
 
 void printValue(Value value) {
+#ifdef NAN_BOXING
+  if (IS_BOOL(value)) {
+    printf(AS_BOOL(value) ? "true" : "false");
+  } else if (IS_NIL(value)) {
+    printf("nil");
+  } else if (IS_NUMBER(value)) {
+    printf("%g", AS_NUMBER(value));
+  } else if (IS_OBJ(value)) {
+    printObject(value);
+  }
+#else
     switch (value.type) {
         case VAL_BOOL:
             printf(AS_BOOL(value) ? "true" : "false");
@@ -48,9 +59,17 @@ void printValue(Value value) {
             printObject(value);
             break;
     }
+#endif
 }
 
 bool valuesEqual(Value a, Value b) {
+#ifdef NAN_BOXING
+  if (IS_NUMBER(a) && IS_NUMBER(b)) {
+    // Technically nan != nan
+    return AS_NUMBER(a) == AS_NUMBER(b);
+  }
+  return a == b;
+#else
     if (a.type != b.type) return false;
     switch (a.type) {
         case VAL_BOOL:
@@ -64,6 +83,7 @@ bool valuesEqual(Value a, Value b) {
         default:
             return false;
     }
+#endif
 }
 
 
@@ -79,17 +99,18 @@ static uint32_t hashDouble(double number) {
 }
 
 uint32_t hashValue(const Value value) {
-    switch (value.type) {
-        case VAL_BOOL:
-            return AS_BOOL(value) ? 1 : 0;
-        case VAL_NIL:
-            return 0;
-        case VAL_NUMBER:
-            return hashDouble(AS_NUMBER(value));
-        case VAL_OBJ:
-            return AS_OBJ(value)->hash;
-    }
+  if (IS_BOOL(value)) {
+    return AS_BOOL(value) ? 1 : 0;
+  } else if (IS_NIL(value)) {
+    return 0;
+  } else if (IS_NUMBER(value)) {
+    return hashDouble(AS_NUMBER(value));
+  } else if (IS_OBJ(value)) {
+    return AS_OBJ(value)->hash;
+  }
+  return 0;
 }
+
 
 // FNV-1a hash function
 uint32_t hashByteArray(const uint8_t *bytes, int length) {

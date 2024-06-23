@@ -20,7 +20,7 @@ void freeTable(Table *table) {
 
 static Entry *findEntry(Entry *entries, int capacity, Value key) {
   if (IS_NIL(key)) return NULL;
-  uint32_t index = hashValue(key) % capacity;
+  uint32_t index = MOD_POW2(hashValue(key), capacity);
   Entry *tombstone = NULL;
   for (;;) {
     // Get the entry
@@ -39,7 +39,7 @@ static Entry *findEntry(Entry *entries, int capacity, Value key) {
     }
 
     // Move to the next slot/bucket
-    index = (index + 1) % capacity;
+    index = MOD_POW2(index + 1, capacity);
   }
 
 }
@@ -125,11 +125,12 @@ void tableAddAll(Table *from, Table *to) {
   }
 }
 
+
 ObjString *tableFindString(const Table *table, const char *chars,
                            int length, uint32_t hash) {
   if (table->count == 0) return NULL;
 
-  uint32_t index = hash % table->capacity;
+  uint32_t index = MOD_POW2(hash, table->capacity);
   for (;;) {
     Entry *entry = &table->entries[index];
     switch (tableEntryState(entry)) {
@@ -150,14 +151,14 @@ ObjString *tableFindString(const Table *table, const char *chars,
     }
 
     // Move to the next slot
-    index = (index + 1) % table->capacity;
+    index = MOD_POW2(index + 1, table->capacity);
   }
 }
 
 void tableRemoveWhite(Table *table) {
   for (int i = 0; i < table->capacity; i++) {
     Entry *entry = &table->entries[i];
-    if (entry->key.type != VAL_NIL && !entry->key.as.obj->isMarked) {
+    if (!IS_NIL(entry->key) && !AS_OBJ(entry->key)->isMarked) {
       tableDelete(table, entry->key);
     }
   }
@@ -176,9 +177,9 @@ EntryState tableEntryState(Entry *entry) {
   // Is this the right thing to do?
   if (entry == NULL) return ABSENT;
 
-  if (entry->key.type == VAL_NIL) {
+  if (IS_NIL(entry->key)) {
     // Could be absent or a tombstone depending on the value
-    if (entry->value.type == VAL_NIL) {
+    if (IS_NIL(entry->value)) {
       return ABSENT;
     } else {
       return TOMBSTONE;

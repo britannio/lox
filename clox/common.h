@@ -5,6 +5,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#define NAN_BOXING
 #define DEBUG_PRINT_CODE
 // Disassemble and print each instruction before execution
 #define DEBUG_TRACE_EXECUTION

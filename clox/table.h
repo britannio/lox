@@ -5,6 +5,11 @@
 #include "value.h"
 
 
+
+// modding by a power of two is equivalent to performing a logical AND with
+// the number - 1 which is significantly faster.
+#define MOD_POW2(input, mod) ((input) & ((mod) - 1))
+
 typedef enum {
   ABSENT = 0, PRESENT, TOMBSTONE
 } EntryState;
